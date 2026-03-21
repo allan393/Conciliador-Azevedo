@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conciliador Automático - Azevedo Contabilidade</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/docx@8.2.3/build/index.umd.js"></script>
+    <script>
+        // Fallback: se docx não carregou do unpkg, tenta jsdelivr
+        if (typeof docx === 'undefined') {
+            document.write('<scr' + 'ipt src="https://cdn.jsdelivr.net/npm/docx@8.2.3/build/index.umd.js"><\/scr' + 'ipt>');
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <style>
+        :root {
+            --azul-escuro: #1a365d;
+            --azul-medio: #2b6cb0;
+            --azul-claro: #ebf4ff;
+            --verde: #38a169;
+            --verde-claro: #f0fff4;
+            --vermelho: #e53e3e;
+            --vermelho-claro: #fff5f5;
+            --amarelo: #d69e2e;
+            --amarelo-claro: #fffff0;
+            --cinza-100: #f7fafc;
+            --cinza-200: #edf2f7;
+            --cinza-300: #e2e8f0;
+            --cinza-400: #a0aec0;
+            --cinza-600: #718096;
+            --cinza-800: #2d3748;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--cinza-100);
+            color: var(--cinza-800);
+            min-height: 100vh;
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, var(--azul-escuro) 0%, var(--azul-medio) 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-logo {
+            width: 56px; height: 56px;
+            background: white;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 22px; color: var(--azul-escuro);
+            flex-shrink: 0;
+        }
+        .header-text h1 { font-size: 22px; font-weight: 700; }
+        .header-text p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+
+        /* CONTAINER */
+        .container { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
+
+        /* CARDS */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--cinza-200);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .card-body { padding: 24px; }
+
+        /* UPLOAD */
+        .upload-zone {
+            border: 2px dashed var(--cinza-300);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--cinza-100);
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--azul-medio);
+            background: var(--azul-claro);
+        }
+        .upload-zone svg { margin-bottom: 12px; }
+        .upload-zone h3 { font-size: 16px; margin-bottom: 6px; color: var(--cinza-800); }
+        .upload-zone p { font-size: 13px; color: var(--cinza-600); }
+        .upload-zone input { display: none; }
+
+        .file-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--verde-claro); color: var(--verde);
+            padding: 8px 16px; border-radius: 8px; font-size: 14px;
+            margin-top: 12px; font-weight: 500;
+        }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--azul-medio); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--azul-escuro); }
+        .btn-success { background: var(--verde); color: white; }
+        .btn-success:hover:not(:disabled) { background: #2f855a; }
+        .btn-outline {
+            background: white; color: var(--azul-medio);
+            border: 1px solid var(--azul-medio);
+        }
+        .btn-outline:hover:not(:disabled) { background: var(--azul-claro); }
+
+        .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+
+        /* TABLES */
+        .table-wrapper { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th {
+            background: var(--azul-escuro);
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--cinza-200);
+        }
+        tr:hover td { background: var(--cinza-100); }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-red { color: var(--vermelho); font-weight: 600; }
+        .text-green { color: var(--verde); font-weight: 600; }
+        .text-blue { color: var(--azul-medio); font-weight: 600; }
+        .text-bold { font-weight: 700; }
+
+        /* STATUS BADGES */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge-red { background: var(--vermelho-claro); color: var(--vermelho); }
+        .badge-green { background: var(--verde-claro); color: var(--verde); }
+        .badge-yellow { background: var(--amarelo-claro); color: var(--amarelo); }
+
+        /* SUMMARY CARDS */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .summary-card .label { font-size: 12px; color: var(--cinza-600); text-transform: uppercase; letter-spacing: 0.5px; }
+        .summary-card .value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+
+        /* PROGRESS */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--cinza-200);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--azul-medio);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        /* STEPS */
+        .steps {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 30px;
+        }
+        .step {
+            flex: 1;
+            text-align: center;
+            padding: 12px 8px;
+            background: var(--cinza-200);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--cinza-600);
+            position: relative;
+        }
+        .step:first-child { border-radius: 8px 0 0 8px; }
+        .step:last-child { border-radius: 0 8px 8px 0; }
+        .step.active { background: var(--azul-medio); color: white; }
+        .step.done { background: var(--verde); color: white; }
+        .step-number {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            font-size: 12px; margin-right: 6px;
+        }
+
+        /* LOG */
+        .log-area {
+            background: var(--cinza-800);
+            color: #a0f0a0;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+        .log-area .log-info { color: #90cdf4; }
+        .log-area .log-success { color: #68d391; }
+        .log-area .log-warn { color: #fbd38d; }
+        .log-area .log-error { color: #fc8181; }
+
+        /* HIDDEN */
+        .hidden { display: none !important; }
+
+        /* TABS */
+        .tabs { display: flex; border-bottom: 2px solid var(--cinza-200); margin-bottom: 16px; }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--cinza-600);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab:hover { color: var(--azul-medio); }
+        .tab.active { color: var(--azul-medio); border-bottom-color: var(--azul-medio); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* FOOTER */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--cinza-400);
+            font-size: 12px;
+        }
+
+        /* ANIMATION */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .pulsing { animation: pulse 1.5s infinite; }
+
+        /* PRINT */
+        @media print {
+            .header, .upload-zone, .btn-row, .steps, .log-area, .footer { display: none; }
+            .card { box-shadow: none; }
+        }
+
+        /* TOOLTIP ROW HIGHLIGHT */
+        tr.row-matched td { background: var(--verde-claro); }
+        tr.row-unmatched td { background: var(--vermelho-claro); }
+        tr.row-partial td { background: var(--amarelo-claro); }
+        tr.row-total td { background: var(--azul-claro); font-weight: 700; }
+
+        /* CONFIG PANEL */
+        .config-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--cinza-600);
+            margin-bottom: 4px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--cinza-300);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--azul-medio);
+            box-shadow: 0 0 0 3px rgba(43,108,176,0.1);
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-logo">AC</div>
+    <div class="header-text">
+        <h1>Conciliador Automático de Fornecedores e Clientes</h1>
+        <p>Azevedo Contabilidade &mdash; Composição de Saldo Inteligente</p>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- STEPS -->
+    <div class="steps">
+        <div class="step active" id="step1"><span class="step-number">1</span> Upload do Razão</div>
+        <div class="step" id="step2"><span class="step-number">2</span> Processamento</div>
+        <div class="step" id="step3"><span class="step-number">3</span> Conciliação</div>
+        <div class="step" id="step4"><span class="step-number">4</span> Relatório</div>
+    </div>
+
+    <!-- UPLOAD SECTION -->
+    <div class="card" id="uploadCard">
+        <div class="card-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3-3 3 3"/></svg>
+            Upload do Razão Contábil (PDF)
+        </div>
+        <div class="card-body">
+            <div class="upload-zone" id="uploadZone">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" stroke-width="1.5">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>
+                </svg>
+                <h3>Arraste o PDF do Razão aqui ou clique para selecionar</h3>
+                <p>Aceita relatórios do sistema Domínio (Thomson Reuters) e similares</p>
+                <input type="file" id="fileInput" accept=".pdf" multiple>
+                <div id="fileInfo"></div>
+            </div>
+
+            <div class="config-grid" style="margin-top: 20px;">
+                <div class="form-group">
+                    <label>Data de Referência da Composição</label>
+                    <input type="date" id="dataRef" value="">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Conta</label>
+                    <select id="tipoConta">
+                        <option value="fornecedor">Fornecedor (Contas a Pagar)</option>
+                        <option value="cliente">Cliente (Contas a Receber)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-primary" id="btnProcessar" disabled onclick="processarRazao()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                    Processar e Conciliar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROCESSING LOG -->
+    <div class="card hidden" id="logCard">
+        <div class="card-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Processamento
+        </div>
+        <div class="card-body">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+            <div class="log-area" id="logArea"></div>
+        </div>
+    </div>
+
+    <!-- RESULTS SECTION -->
+    <div class="hidden" id="resultsSection">
+
+        <!-- SUMMARY -->
+        <div class="summary-grid fade-in" id="summaryGrid"></div>
+
+        <!-- RESULTS CARD -->
+        <div class="card fade-in">
+            <div class="card-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+                Resultado da Conciliação
+            </div>
+            <div class="card-body">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('composicao')">Composição de Saldo</div>
+                    <div class="tab" onclick="switchTab('conciliado')">Lançamentos Conciliados</div>
+                    <div class="tab" onclick="switchTab('todos')">Todos os Lançamentos</div>
+                </div>
+
+                <div class="tab-content active" id="tab-composicao"></div>
+                <div class="tab-content" id="tab-conciliado"></div>
+                <div class="tab-content" id="tab-todos"></div>
+            </div>
+        </div>
+
+        <!-- EXPORT BUTTONS -->
+        <div class="card fade-in">
+            <div class="card-body">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap: 12px;">
+                    <div>
+                        <strong>Exportar Relatório</strong>
+                        <p style="font-size:13px; color:var(--cinza-600); margin-top:2px;">Relatório profissional com logo Azevedo Contabilidade</p>
+                    </div>
+                    <div class="btn-row" style="margin:0;">
+                        <button class="btn btn-success" onclick="gerarRelatorioWord()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+                            Baixar Word (.docx)
+                        </button>
+                        <button class="btn btn-outline" onclick="novaConsulta()">
+                            Nova Conciliação
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    Azevedo Contabilidade &copy; 2025 &mdash; Sistema de Conciliação Automática v1.0
+</div>
+
+<script>
+// ======================================================================
+// GLOBAL STATE
+// ======================================================================
+let pdfFiles = [];
+let resultadoConciliacao = null;
+let dadosEmpresa = {};
+let dadosConta = {};
+
+// Set default date
+document.getElementById('dataRef').valueAsDate = new Date();
+
+// ======================================================================
+// FILE UPLOAD HANDLING
+// ======================================================================
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+function handleFiles(files) {
+    pdfFiles = Array.from(files).filter(f => f.type === 'application/pdf');
+    if (pdfFiles.length === 0) { alert('Por favor, selecione arquivos PDF.'); return; }
+    const info = document.getElementById('fileInfo');
+    info.innerHTML = pdfFiles.map(f =>
+        `<div class="file-badge">📄 ${f.name} (${(f.size/1024).toFixed(0)} KB)</div>`
+    ).join('');
+    document.getElementById('btnProcessar').disabled = false;
+}
+
+// ======================================================================
+// PDF PARSING
+// ======================================================================
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+async function extractTextFromPDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let allItems = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const viewport = page.getViewport({ scale: 1 });
+        const pageHeight = viewport.height;
+
+        const items = textContent.items.map(item => ({
+            text: item.str,
+            x: Math.round(item.transform[4]),
+            y: Math.round(pageHeight - item.transform[5]),
+            width: item.width,
+            page: i
+        }));
+        allItems = allItems.concat(items);
+    }
+    return allItems;
+}
+
+function groupIntoLines(items) {
+    items.sort((a, b) => a.y - b.y || a.x - b.x);
+    const lines = [];
+    let currentLine = [];
+    let currentY = -999;
+
+    for (const item of items) {
+        if (Math.abs(item.y - currentY) > 4) {
+            if (currentLine.length > 0) lines.push(currentLine);
+            currentLine = [item];
+            currentY = item.y;
+        } else {
+            currentLine.push(item);
+        }
+    }
+    if (currentLine.length > 0) lines.push(currentLine);
+
+    return lines.map(line => {
+        line.sort((a, b) => a.x - b.x);
+        return { items: line, text: line.map(i => i.text).join(' '), y: line[0].y };
+    });
+}
+
+// ======================================================================
+// RAZÃO PARSER v2 — ROBUST: uses saldo progression instead of column positions
+// ======================================================================
+function parseDecimalBR(str) {
+    if (!str) return 0;
+    str = str.replace(/[CD]$/g, '').trim();
+    str = str.replace(/\./g, '').replace(',', '.');
+    return parseFloat(str) || 0;
+}
+
+function round2(n) { return Math.round(n * 100) / 100; }
+
+function formatBRL(n) {
+    if (n === 0 || n === undefined || n === null) return 'R$ -';
+    return 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function parseDataBR(str) {
+    if (!str) return new Date(0);
+    const [d, m, y] = str.split('/');
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+}
+
+function lineText(line) {
+    return line.items.map(i => i.text).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+// Detect column X boundaries from the header line
+function detectColumns(lines) {
+    for (const line of lines) {
+        const t = lineText(line);
+        // Look for the header row with column names
+        if (t.match(/D[ée]bito/i) && t.match(/Cr[ée]dito/i)) {
+            const cols = {};
+            for (const item of line.items) {
+                const txt = item.text.trim();
+                if (txt.match(/^Data$/i)) cols.data = item.x;
+                else if (txt.match(/^(Lote|N[uú]mero)$/i)) cols.lote = item.x;
+                else if (txt.match(/^Hist[oó]rico$/i)) cols.historico = item.x;
+                else if (txt.match(/^Cta/i)) cols.cta = item.x;
+                else if (txt.match(/^D[ée]bito$/i)) cols.debito = item.x;
+                else if (txt.match(/^Cr[ée]dito$/i)) cols.credito = item.x;
+                else if (txt.match(/^Saldo$/i)) cols.saldo = item.x;
+                else if (txt.match(/^Saldo.?Exerc/i)) cols.saldoExercicio = item.x;
+            }
+            // Ensure we have at least debito, credito, and one saldo
+            if (cols.debito && cols.credito) {
+                console.log('Detected columns:', cols);
+                return cols;
+            }
+        }
+    }
+    return null;
+}
+
+// Classify a numeric item into a column based on X proximity
+function classifyByX(x, cols) {
+    // Build a list of column candidates with their X positions
+    const candidates = [];
+    if (cols.cta) candidates.push({ name: 'cta', x: cols.cta });
+    if (cols.debito) candidates.push({ name: 'debito', x: cols.debito });
+    if (cols.credito) candidates.push({ name: 'credito', x: cols.credito });
+    if (cols.saldo) candidates.push({ name: 'saldo', x: cols.saldo });
+    if (cols.saldoExercicio) candidates.push({ name: 'saldoExercicio', x: cols.saldoExercicio });
+
+    let best = null;
+    let bestDist = Infinity;
+    for (const c of candidates) {
+        const dist = Math.abs(x - c.x);
+        if (dist < bestDist) {
+            bestDist = dist;
+            best = c.name;
+        }
+    }
+    // Allow up to 100px tolerance
+    return bestDist < 100 ? best : null;
+}
+
+function parseRazao(lines) {
+    const transacoes = [];
+    let empresa = '', cnpj = '', periodo = '', conta = '', contaCodigo = '';
+    let saldoAnterior = 0;
+    let saldoAnteriorTipo = 'C';
+
+    // 1. Detect column positions from header
+    const cols = detectColumns(lines);
+    console.log('Column detection result:', cols);
+
+    // 2. Extract header info
+    for (const line of lines) {
+        const t = lineText(line);
+        if (t.match(/Empresa:\s*/i)) {
+            const m = t.match(/Empresa:\s*(.+?)(?:\s+Folha|$)/i);
+            if (m) empresa = m[1].trim();
+        }
+        if (t.match(/C\.?N\.?P\.?J\.?/i)) {
+            const m = t.match(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/);
+            if (m) cnpj = m[1];
+        }
+        if (t.match(/Per[ií]odo/i)) {
+            const m = t.match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/);
+            if (m) periodo = m[0];
+        }
+        if (t.match(/Conta:\s*/i)) {
+            const m = t.match(/Conta:\s*(\d+)\s*-\s*([\d.]+)\s+(.*)/i);
+            if (m) {
+                contaCodigo = m[1] + ' - ' + m[2];
+                conta = m[3].trim();
+            }
+        }
+    }
+
+    // 3. Parse each line
+    const dateRegex = /^(\d{2}\/\d{2}\/\d{4})/;
+    let pendingTx = null;
+
+    for (let i = 0; i < lines.length; i++) {
+        const lt = lineText(lines[i]);
+
+        // SALDO ANTERIOR
+        if (lt.match(/SALDO\s+ANTERIOR/i)) {
+            // Find saldo value — look for number with C/D suffix
+            for (const item of lines[i].items) {
+                const m = item.text.trim().match(/^([\d.,]+)([CD])$/);
+                if (m) {
+                    saldoAnterior = parseDecimalBR(m[1]);
+                    saldoAnteriorTipo = m[2];
+                }
+            }
+            // Also check if it's just "0,00" or "0.00"
+            if (saldoAnterior === 0) {
+                for (const item of lines[i].items) {
+                    if (item.text.trim() === '0,00' || item.text.trim() === '0.00') {
+                        saldoAnterior = 0;
+                    }
+                }
+            }
+            continue;
+        }
+
+        // Skip header/footer lines
+        if (lt.match(/^(RAZÃO|CONSOLIDADO|Per[ií]odo|C\.?N\.?P\.?J|Empresa:|Folha:|Conta:|Data\s+(Lote|N[uú]mero)|Sistema licenciado|Total da conta|D[ée]bito)/i)) continue;
+
+        // Transaction line (starts with date)
+        const dateMatch = lt.match(dateRegex);
+        if (dateMatch) {
+            if (pendingTx) transacoes.push(pendingTx);
+
+            const data = dateMatch[1];
+
+            // Extract values using column positions if available
+            const parsed = extractValuesV2(lines[i], cols);
+
+            pendingTx = {
+                data: data,
+                lote: parsed.lote || '',
+                historico: parsed.historico || '',
+                ctaContraPartida: parsed.cta || '',
+                debito: parsed.debito || 0,
+                credito: parsed.credito || 0,
+                saldo: parsed.saldo || 0,
+                saldoTipo: parsed.saldoTipo || 'C'
+            };
+        } else if (pendingTx) {
+            // Continuation line — append to historico
+            const clean = lt.trim();
+            if (clean && !clean.match(/^(RAZÃO|CONSOLIDADO|Per[ií]odo|C\.?N\.?P\.?J|Empresa:|Folha:|Conta:|Data\s+(Lote|N[uú]mero)|Sistema licenciado|Total da conta)/i)) {
+                // Check if line has a saldo value we missed
+                let hasSaldo = false;
+                for (const item of lines[i].items) {
+                    const m = item.text.trim().match(/^([\d.,]+)([CD])$/);
+                    if (m && cols) {
+                        const col = classifyByX(item.x, cols);
+                        if ((col === 'saldoExercicio' || col === 'saldo') && pendingTx.saldo === 0) {
+                            pendingTx.saldo = parseDecimalBR(m[1]);
+                            pendingTx.saldoTipo = m[2];
+                            hasSaldo = true;
+                        }
+                    } else if (m && !cols) {
+                        pendingTx.saldo = parseDecimalBR(m[1]);
+                        pendingTx.saldoTipo = m[2];
+                        hasSaldo = true;
+                    }
+                }
+                // Append text to historico (exclude pure numeric items)
+                const textParts = lines[i].items
+                    .filter(it => !it.text.trim().match(/^[\d.,]+[CD]?$/))
+                    .map(it => it.text.trim())
+                    .filter(t => t.length > 0);
+                if (textParts.length > 0) {
+                    pendingTx.historico += ' ' + textParts.join(' ');
+                }
+            }
+        }
+    }
+    if (pendingTx) transacoes.push(pendingTx);
+
+    return { empresa, cnpj, periodo, conta, contaCodigo, saldoAnterior, saldoAnteriorTipo, transacoes };
+}
+
+// Split text items that may have concatenated text+numbers (e.g., "FORNECEDOR34.993,29C")
+function splitConcatenated(items) {
+    const result = [];
+    for (const item of items) {
+        const t = item.text;
+        // Check for pattern: text followed by number with C/D suffix
+        const m = t.match(/^(.+?)([\d.]+,\d{2}[CD]?)$/);
+        if (m && m[1] && !m[1].match(/^\d/)) {
+            // Split into text part and number part
+            result.push({ text: m[1], x: item.x, y: item.y, width: item.width * 0.7 });
+            result.push({ text: m[2], x: item.x + item.width * 0.7, y: item.y, width: item.width * 0.3 });
+        } else {
+            result.push(item);
+        }
+    }
+    return result;
+}
+
+// V2 value extractor: uses column X positions when available
+function extractValuesV2(line, cols) {
+    const result = { lote: '', historico: '', cta: '', debito: 0, credito: 0, saldo: 0, saldoTipo: 'C' };
+
+    // Pre-process: split concatenated text+number items
+    const items = splitConcatenated([...line.items]).sort((a, b) => a.x - b.x);
+
+    const numericItems = [];
+    const textItems = [];
+
+    for (const item of items) {
+        const t = item.text.trim();
+        if (!t) continue;
+        if (t.match(/^\d{2}\/\d{2}\/\d{4}$/)) continue; // skip date
+
+        if (t.match(/^[\d.,]+[CD]?$/) && t.length > 2 && t.includes(',')) {
+            // Decimal number (amount or saldo)
+            numericItems.push({
+                text: t, x: item.x,
+                val: parseDecimalBR(t),
+                hasSuffix: /[CD]$/.test(t),
+                suffix: t.match(/([CD])$/)?.[1] || ''
+            });
+        } else if (t.match(/^\d{1,6}$/) && !t.includes(',') && !t.includes('.')) {
+            // Integer — lote/número or CTA
+            if (cols) {
+                const col = classifyByX(item.x, cols);
+                if (col === 'cta') {
+                    result.cta = t;
+                } else if (!result.lote && item.x < (cols.cta || cols.debito || 200)) {
+                    result.lote = t;
+                } else {
+                    textItems.push(item);
+                }
+            } else {
+                if (!result.lote) result.lote = t;
+                else if (!result.cta) result.cta = t;
+                else textItems.push(item);
+            }
+        } else {
+            textItems.push(item);
+        }
+    }
+
+    // Classify numeric items using column positions
+    if (cols && numericItems.length > 0) {
+        // Sort by X to process in order
+        numericItems.sort((a, b) => a.x - b.x);
+
+        for (const ni of numericItems) {
+            const col = classifyByX(ni.x, cols);
+            if (col === 'debito' && !result.debito) {
+                result.debito = ni.val;
+            } else if (col === 'credito' && !result.credito) {
+                result.credito = ni.val;
+            } else if (col === 'saldoExercicio') {
+                // Always prefer saldoExercicio as the final saldo
+                result.saldo = ni.val;
+                result.saldoTipo = ni.suffix || 'C';
+            } else if (col === 'saldo') {
+                // Intermediate saldo — use only if we don't have saldoExercicio yet
+                if (!result.saldo) {
+                    result.saldo = ni.val;
+                    result.saldoTipo = ni.suffix || 'C';
+                }
+            }
+        }
+
+        // If saldo is still 0, try rightmost suffixed value
+        if (!result.saldo) {
+            const suffixed = numericItems.filter(n => n.hasSuffix);
+            if (suffixed.length > 0) {
+                const last = suffixed[suffixed.length - 1];
+                result.saldo = last.val;
+                result.saldoTipo = last.suffix;
+            }
+        }
+    } else if (numericItems.length > 0) {
+        // Fallback without column detection
+        const withSuffix = numericItems.filter(n => n.hasSuffix);
+        const withoutSuffix = numericItems.filter(n => !n.hasSuffix);
+
+        if (withSuffix.length > 0) {
+            const saldoItem = withSuffix[withSuffix.length - 1];
+            result.saldo = saldoItem.val;
+            result.saldoTipo = saldoItem.suffix;
+        }
+        for (const ni of withoutSuffix) {
+            if (!result.debito) result.debito = ni.val;
+            else if (!result.credito) result.credito = ni.val;
+        }
+    }
+
+    // Build historico from text items
+    result.historico = textItems.map(it => it.text.trim()).filter(t => t.length > 0).join(' ').replace(/\s+/g, ' ').trim();
+
+    return result;
+}
+
+// Post-process: use saldo progression to correct debito/credito classification
+function postProcessTransactions(data) {
+    // Determine saldo sign convention
+    // Saldo C (credor) = positive for fornecedor (we owe them)
+    // Saldo D (devedor) = negative for fornecedor (they owe us or we overpaid)
+    let runningBalance = data.saldoAnterior;
+    if (data.saldoAnteriorTipo === 'D') runningBalance = -runningBalance;
+
+    const txns = data.transacoes;
+
+    for (let i = 0; i < txns.length; i++) {
+        const t = txns[i];
+
+        // Convert saldo to signed value
+        let targetSaldo = t.saldo;
+        if (t.saldoTipo === 'D') targetSaldo = -targetSaldo;
+
+        // If we have both debito and credito, check if they're correct
+        if (t.debito > 0 && t.credito > 0) {
+            const expected = runningBalance - t.debito + t.credito;
+            if (Math.abs(expected - targetSaldo) < 0.05) {
+                // Correct
+                runningBalance = targetSaldo;
+                continue;
+            }
+            // Try swapping
+            const swapped = runningBalance - t.credito + t.debito;
+            if (Math.abs(swapped - targetSaldo) < 0.05) {
+                [t.debito, t.credito] = [t.credito, t.debito];
+                runningBalance = targetSaldo;
+                continue;
+            }
+        }
+
+        // If only one amount is set, or both are wrong, use saldo to determine
+        const amount1 = t.debito || 0;
+        const amount2 = t.credito || 0;
+        const amounts = [amount1, amount2].filter(a => a > 0);
+
+        if (amounts.length === 1) {
+            const amt = amounts[0];
+            const asCredit = runningBalance + amt;
+            const asDebit = runningBalance - amt;
+
+            if (t.saldo > 0 && Math.abs(asCredit - targetSaldo) < 0.05) {
+                t.credito = amt;
+                t.debito = 0;
+                runningBalance = targetSaldo;
+            } else if (t.saldo > 0 && Math.abs(asDebit - targetSaldo) < 0.05) {
+                t.debito = amt;
+                t.credito = 0;
+                runningBalance = targetSaldo;
+            } else {
+                // Can't determine from saldo, keep as-is and force sync
+                runningBalance = targetSaldo || runningBalance;
+            }
+        } else if (amounts.length === 0 && t.saldo > 0) {
+            // No amounts detected — infer from saldo change
+            const diff = targetSaldo - runningBalance;
+            if (diff > 0.01) {
+                t.credito = round2(Math.abs(diff));
+                t.debito = 0;
+            } else if (diff < -0.01) {
+                t.debito = round2(Math.abs(diff));
+                t.credito = 0;
+            }
+            runningBalance = targetSaldo;
+        } else if (amounts.length === 2) {
+            // Two amounts, saldo available — try all combinations
+            const a = amount1, b = amount2;
+            // Try: debito=a, credito=b
+            if (Math.abs(runningBalance - a + b - targetSaldo) < 0.05) {
+                t.debito = a; t.credito = b;
+            }
+            // Try: debito=b, credito=a
+            else if (Math.abs(runningBalance - b + a - targetSaldo) < 0.05) {
+                t.debito = b; t.credito = a;
+            }
+            // Try: just debito=a
+            else if (Math.abs(runningBalance - a - targetSaldo) < 0.05) {
+                t.debito = a; t.credito = 0;
+            }
+            // Try: just credito=a
+            else if (Math.abs(runningBalance + a - targetSaldo) < 0.05) {
+                t.credito = a; t.debito = 0;
+            }
+            runningBalance = targetSaldo;
+        } else {
+            // Update running balance from transaction
+            if (t.credito > 0) runningBalance += t.credito;
+            if (t.debito > 0) runningBalance -= t.debito;
+            // Sync to saldo if available
+            if (t.saldo > 0) runningBalance = targetSaldo;
+        }
+    }
+
+    // Store final calculated balance
+    data.saldoFinalCalculado = runningBalance;
+    return data;
+}
+
+// ======================================================================
+// NF NUMBER EXTRACTION — handles all known patterns
+// ======================================================================
+function extractNFNumbers(historico) {
+    const nfs = new Set();
+    const h = historico.replace(/\s+/g, ' ');
+
+    // Pattern 1: "COMPRAS DE MERCADORIAS NF NF 410111" or "NF NF410111"
+    for (const m of h.matchAll(/NFs?\s*(?:NFs?\s*)?(\d{4,})/gi)) nfs.add(m[1]);
+
+    // Pattern 2: "COMPRAS DE MERCADORIAS 27022 ALBEMA" (number after MERCADORIAS, before supplier name)
+    for (const m of h.matchAll(/MERCADORIAS\s+(\d{4,})/gi)) nfs.add(m[1]);
+
+    // Pattern 3: 'Pagamento efetuado: "NF 26641 PARC 03-05"' or 'Pagamento efetuado: NF 27366 parc 05'
+    for (const m of h.matchAll(/Pagamento\s+efetuado[:\s]*["""]?\s*(?:REF\s+)?NFs?\s*(\d{4,})/gi)) nfs.add(m[1]);
+
+    // Pattern 4: "REF NF 26641 PARC 03-05"
+    for (const m of h.matchAll(/REF\s+NFs?\s*(\d{4,})/gi)) nfs.add(m[1]);
+
+    // Pattern 5: "PGTO NF 745635/001" or "PGTO 716769/001"
+    for (const m of h.matchAll(/PGTO\s*(?:NFs?\s*)?(\d{4,})(?:\/\d+)?/gi)) nfs.add(m[1]);
+
+    // Pattern 6: "CONF NF 56609" or "CONF NF NF 56609"
+    for (const m of h.matchAll(/CONF\s*NFs?\s*(?:NFs?\s*)?(\d{4,})/gi)) nfs.add(m[1]);
+
+    // Pattern 7: "Baixado pelo sistema financeiro" → no NF, return empty
+
+    return Array.from(nfs);
+}
+
+// ======================================================================
+// RECONCILIATION ENGINE v2
+// ======================================================================
+function conciliar(data) {
+    const txns = data.transacoes;
+    const nfCompras = new Map();
+    const nfPagamentos = new Map();
+    const pagamentosSemNF = [];
+    const dataRef = document.getElementById('dataRef').value;
+
+    // 1. Classify transactions and extract NF numbers
+    for (const t of txns) {
+        const nfs = extractNFNumbers(t.historico);
+        t.nfs = nfs;
+        t.tipo = t.credito > 0 ? 'compra' : 'pagamento';
+
+        if (t.credito > 0) {
+            for (const nf of nfs) {
+                if (!nfCompras.has(nf)) nfCompras.set(nf, { totalCredito: 0, entries: [] });
+                nfCompras.get(nf).totalCredito += t.credito;
+                nfCompras.get(nf).entries.push(t);
+            }
+            if (nfs.length === 0) {
+                nfCompras.set('SEM_NF_' + t.data + '_' + t.credito.toFixed(2), {
+                    totalCredito: t.credito, entries: [t]
+                });
+            }
+        }
+
+        if (t.debito > 0) {
+            if (nfs.length > 0) {
+                for (const nf of nfs) {
+                    if (!nfPagamentos.has(nf)) nfPagamentos.set(nf, { totalDebito: 0, entries: [] });
+                    nfPagamentos.get(nf).totalDebito += t.debito;
+                    nfPagamentos.get(nf).entries.push(t);
+                }
+            } else {
+                pagamentosSemNF.push(t);
+            }
+        }
+    }
+
+    // 2a. Cross-match: payments referencing NFs not in purchases may match via digit similarity
+    // e.g., purchase "276641" and payment "26641" → share last 4 digits "6641"
+    for (const [payNF, pagtoInfo] of nfPagamentos) {
+        if (nfCompras.has(payNF) || pagtoInfo._merged) continue;
+
+        let bestMatch = null, bestScore = 0;
+
+        for (const [compNF, compraInfo] of nfCompras) {
+            if (compNF.startsWith('SEM_NF_')) continue;
+            if (nfPagamentos.has(compNF) && nfPagamentos.get(compNF).totalDebito > 0 && compNF !== payNF) continue;
+
+            // Strategy 1: exact suffix/prefix match
+            if (compNF.endsWith(payNF) || payNF.endsWith(compNF)) {
+                bestMatch = compNF; bestScore = 100; break;
+            }
+
+            // Strategy 2: shared trailing digits (at least 4)
+            const minLen = Math.min(payNF.length, compNF.length);
+            let shared = 0;
+            for (let k = 1; k <= minLen; k++) {
+                if (payNF[payNF.length - k] === compNF[compNF.length - k]) shared++;
+                else break;
+            }
+            if (shared >= 4 && shared > bestScore) {
+                // Verify amount compatibility (payments shouldn't exceed purchase)
+                if (pagtoInfo.totalDebito <= compraInfo.totalCredito + 0.05) {
+                    bestMatch = compNF; bestScore = shared;
+                }
+            }
+
+            // Strategy 3: one NF is substring of the other
+            if (!bestMatch && (compNF.includes(payNF) || payNF.includes(compNF))) {
+                if (pagtoInfo.totalDebito <= compraInfo.totalCredito + 0.05) {
+                    bestMatch = compNF; bestScore = 50; break;
+                }
+            }
+        }
+
+        if (bestMatch) {
+            if (!nfPagamentos.has(bestMatch)) nfPagamentos.set(bestMatch, { totalDebito: 0, entries: [] });
+            nfPagamentos.get(bestMatch).totalDebito += pagtoInfo.totalDebito;
+            nfPagamentos.get(bestMatch).entries.push(...(pagtoInfo.entries || []));
+            pagtoInfo._merged = bestMatch;
+            console.log(`NF match: payment NF ${payNF} → purchase NF ${bestMatch} (score: ${bestScore})`);
+        }
+    }
+
+    // 2b. Match NFs: compras vs pagamentos
+    const conciliados = [];
+    const naoLiquidados = [];
+
+    for (const [nf, compraInfo] of nfCompras) {
+        if (nf.startsWith('SEM_NF_')) continue;
+
+        const pagtoInfo = nfPagamentos.get(nf);
+        const totalPago = pagtoInfo ? pagtoInfo.totalDebito : 0;
+        const saldoNF = round2(compraInfo.totalCredito - totalPago);
+
+        const item = {
+            nf, dataCompra: compraInfo.entries[0].data,
+            totalCompra: round2(compraInfo.totalCredito),
+            totalPago: round2(totalPago),
+            saldoRestante: Math.max(0, saldoNF),
+            status: saldoNF <= 0.01 ? 'liquidado' : (totalPago > 0.01 ? 'parcial' : 'aberto'),
+            compraEntries: compraInfo.entries,
+            pagtoEntries: pagtoInfo ? pagtoInfo.entries : []
+        };
+
+        if (saldoNF > 0.01) naoLiquidados.push(item);
+        conciliados.push(item);
+    }
+
+    // 2c. Remove payment-only NFs that were merged via suffix matching
+    // (Don't add them as separate conciliados)
+
+    // 3. Match payments without NF using multiple strategies
+    // Helper to apply a payment to an NF item
+    function applyPayment(item, pgto) {
+        item.totalPago = round2(item.totalPago + pgto.debito);
+        item.saldoRestante = round2(item.totalCompra - item.totalPago);
+        if (item.saldoRestante < 0) item.saldoRestante = 0;
+        item.pagtoEntries.push(pgto);
+        item.status = item.saldoRestante <= 0.01 ? 'liquidado' : 'parcial';
+        pgto.matched = true;
+    }
+
+    for (const pgto of pagamentosSemNF) {
+        if (pgto.matched) continue;
+
+        // Strategy A: Exact saldo match
+        for (const item of naoLiquidados) {
+            if (item.saldoRestante > 0.01 && Math.abs(item.saldoRestante - pgto.debito) < 0.05) {
+                applyPayment(item, pgto);
+                break;
+            }
+        }
+        if (pgto.matched) continue;
+
+        // Strategy B: Match by installment value (NF total / N parcelas = payment amount)
+        // Check if payment amount divides evenly into any open NF
+        for (const item of naoLiquidados) {
+            if (item.saldoRestante > 0.01 && pgto.debito <= item.totalCompra + 0.05) {
+                const ratio = item.totalCompra / pgto.debito;
+                const roundedRatio = Math.round(ratio);
+                if (roundedRatio >= 2 && roundedRatio <= 12 && Math.abs(ratio - roundedRatio) < 0.01) {
+                    // Payment is 1/N of the total — likely an installment
+                    applyPayment(item, pgto);
+                    break;
+                }
+            }
+        }
+        if (pgto.matched) continue;
+
+        // Strategy C: Match if payment amount matches existing paid installment of same NF
+        for (const item of naoLiquidados) {
+            if (item.saldoRestante > 0.01 && pgto.debito <= item.saldoRestante + 0.05) {
+                // Check if other payments to this NF have same amount (installment pattern)
+                const existingPayments = item.pagtoEntries.map(e => e.debito);
+                if (existingPayments.some(ep => Math.abs(ep - pgto.debito) < 0.05)) {
+                    applyPayment(item, pgto);
+                    break;
+                }
+            }
+        }
+        if (pgto.matched) continue;
+
+        // Strategy D: Match any payment that fits within remaining saldo
+        for (const item of naoLiquidados) {
+            if (item.saldoRestante > 0.01 && pgto.debito <= item.saldoRestante + 0.05) {
+                applyPayment(item, pgto);
+                break;
+            }
+        }
+    }
+
+    // 4. Saldo anterior consumption
+    let saldoAnteriorConsumido = pagamentosSemNF.filter(p => !p.matched).reduce((s, p) => s + p.debito, 0);
+    for (const [nf, pagtoInfo] of nfPagamentos) {
+        if (!nfCompras.has(nf)) saldoAnteriorConsumido += pagtoInfo.totalDebito;
+    }
+
+    // 5. Build composição
+    const composicao = naoLiquidados
+        .filter(item => item.saldoRestante > 0.01)
+        .sort((a, b) => parseDataBR(a.dataCompra) - parseDataBR(b.dataCompra));
+
+    const totalComposicao = round2(composicao.reduce((sum, item) => sum + item.saldoRestante, 0));
+
+    const totalCreditos = round2(txns.reduce((s, t) => s + t.credito, 0));
+    const totalDebitos = round2(txns.reduce((s, t) => s + t.debito, 0));
+    const saldoBase = data.saldoAnteriorTipo === 'D' ? -data.saldoAnterior : data.saldoAnterior;
+    const saldoCalculado = round2(saldoBase + totalCreditos - totalDebitos);
+
+    return {
+        composicao, conciliados, naoLiquidados, totalComposicao,
+        totalCreditos, totalDebitos,
+        saldoAnterior: data.saldoAnterior, saldoAnteriorTipo: data.saldoAnteriorTipo || 'C',
+        saldoFinal: Math.abs(saldoCalculado),
+        saldoFinalTipo: saldoCalculado >= 0 ? 'C' : 'D',
+        saldoAnteriorConsumido,
+        empresa: data.empresa, cnpj: data.cnpj, periodo: data.periodo,
+        conta: data.conta, contaCodigo: data.contaCodigo,
+        transacoes: txns, dataRef
+    };
+}
+
+// ======================================================================
+// MAIN PROCESSING FLOW
+// ======================================================================
+async function processarRazao() {
+    const logArea = document.getElementById('logArea');
+    const logCard = document.getElementById('logCard');
+    const progressFill = document.getElementById('progressFill');
+
+    logCard.classList.remove('hidden');
+    logArea.innerHTML = '';
+
+    function log(msg, cls = '') {
+        logArea.innerHTML += `<div class="${cls}">${msg}</div>`;
+        logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    function setProgress(pct) { progressFill.style.width = pct + '%'; }
+
+    setStep(2);
+    log('▶ Iniciando processamento...', 'log-info');
+    setProgress(10);
+
+    try {
+        // Step 1: Extract text from PDFs
+        let allItems = [];
+        for (const file of pdfFiles) {
+            log(`📄 Extraindo texto de: ${file.name}`, 'log-info');
+            const items = await extractTextFromPDF(file);
+            allItems = allItems.concat(items);
+            log(`   ✓ ${items.length} elementos de texto extraídos`, 'log-success');
+        }
+        setProgress(30);
+
+        // Step 2: Group into lines
+        log('📋 Organizando linhas do razão...', 'log-info');
+        const lines = groupIntoLines(allItems);
+        log(`   ✓ ${lines.length} linhas identificadas`, 'log-success');
+        setProgress(40);
+
+        // Step 3: Parse Razão structure
+        log('🔍 Parseando estrutura do Razão...', 'log-info');
+        let data = parseRazao(lines);
+        log(`   ✓ Empresa: ${data.empresa}`, 'log-success');
+        log(`   ✓ CNPJ: ${data.cnpj}`, 'log-success');
+        log(`   ✓ Conta: ${data.conta}`, 'log-success');
+        log(`   ✓ Saldo anterior: ${formatBRL(data.saldoAnterior)}`, 'log-success');
+        log(`   ✓ ${data.transacoes.length} lançamentos encontrados`, 'log-success');
+        setProgress(55);
+
+        // Step 4: Post-process (determine debito/credito)
+        log('⚙️ Classificando débitos e créditos...', 'log-info');
+        data = postProcessTransactions(data);
+
+        const totalDeb = round2(data.transacoes.reduce((s, t) => s + t.debito, 0));
+        const totalCred = round2(data.transacoes.reduce((s, t) => s + t.credito, 0));
+        log(`   ✓ Total débitos: ${formatBRL(totalDeb)}`, 'log-success');
+        log(`   ✓ Total créditos: ${formatBRL(totalCred)}`, 'log-success');
+        setProgress(70);
+
+        // Step 5: Reconciliation
+        setStep(3);
+        log('🔄 Executando conciliação automática...', 'log-info');
+        resultadoConciliacao = conciliar(data);
+
+        const nfTotal = resultadoConciliacao.conciliados.length;
+        const nfLiq = resultadoConciliacao.conciliados.filter(c => c.status === 'liquidado').length;
+        const nfAberto = resultadoConciliacao.composicao.length;
+
+        log(`   ✓ ${nfTotal} NFs processadas`, 'log-success');
+        log(`   ✓ ${nfLiq} NFs totalmente liquidadas`, 'log-success');
+        log(`   ✓ ${nfAberto} NFs com saldo em aberto`, 'log-warn');
+        log(`   ✓ Saldo final da composição: ${formatBRL(resultadoConciliacao.totalComposicao)}`, 'log-success');
+        setProgress(90);
+
+        // Verify
+        log('✅ Verificando integridade...', 'log-info');
+        const saldoFinalStr = formatBRL(resultadoConciliacao.saldoFinal) + (resultadoConciliacao.saldoFinalTipo || 'C');
+        log(`   Saldo contábil (Razão): ${saldoFinalStr}`, 'log-info');
+        log(`   Saldo composição: ${formatBRL(resultadoConciliacao.totalComposicao)}`, 'log-info');
+        log(`   NFs encontradas: ${resultadoConciliacao.conciliados.map(c => c.nf).join(', ')}`, 'log-info');
+
+        const diff = Math.abs(resultadoConciliacao.saldoFinal - resultadoConciliacao.totalComposicao);
+        if (diff < 1.00) {
+            log(`   ✓ Conciliação BATEU! Diferença: ${formatBRL(diff)}`, 'log-success');
+        } else {
+            log(`   ⚠ Diferença de ${formatBRL(diff)} - revisar itens sem NF identificável`, 'log-warn');
+        }
+
+        setProgress(100);
+        setStep(4);
+
+        // Step 6: Show results
+        log('📊 Montando visualização dos resultados...', 'log-info');
+        showResults(resultadoConciliacao);
+        log('✅ Conciliação concluída com sucesso!', 'log-success');
+
+    } catch (err) {
+        log(`❌ Erro: ${err.message}`, 'log-error');
+        console.error(err);
+    }
+}
+
+// ======================================================================
+// DISPLAY RESULTS
+// ======================================================================
+function showResults(result) {
+    const section = document.getElementById('resultsSection');
+    section.classList.remove('hidden');
+
+    // Summary cards
+    const grid = document.getElementById('summaryGrid');
+    const nfLiq = result.conciliados.filter(c => c.status === 'liquidado').length;
+    grid.innerHTML = `
+        <div class="summary-card">
+            <div class="label">Saldo Contábil</div>
+            <div class="value text-blue">${formatBRL(result.saldoFinal)}${result.saldoFinalTipo || 'C'}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">NFs em Aberto</div>
+            <div class="value text-red">${result.composicao.length}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">NFs Liquidadas</div>
+            <div class="value text-green">${nfLiq}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Total Composição</div>
+            <div class="value text-red">${formatBRL(result.totalComposicao)}</div>
+        </div>
+    `;
+
+    // Tab 1: Composição de Saldo
+    const tabComp = document.getElementById('tab-composicao');
+    if (result.composicao.length === 0) {
+        tabComp.innerHTML = '<p style="text-align:center; padding:20px; color:var(--verde);">✅ Todas as NFs estão liquidadas! Nenhum saldo em aberto.</p>';
+    } else {
+        let html = `
+            <div style="margin-bottom:12px; font-size:14px;">
+                <strong>${result.conta}</strong><br>
+                <span style="color:var(--cinza-600);">${result.empresa} | CNPJ: ${result.cnpj}</span>
+            </div>
+            <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>NF</th>
+                        <th class="text-right">Vlr. Compra</th>
+                        <th class="text-right">Vlr. Pago</th>
+                        <th class="text-right">Saldo a Pagar</th>
+                        <th class="text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        let totalCompra = 0, totalPago = 0, totalSaldo = 0;
+        for (const item of result.composicao) {
+            totalCompra += item.totalCompra;
+            totalPago += item.totalPago;
+            totalSaldo += item.saldoRestante;
+            const statusBadge = item.status === 'parcial'
+                ? '<span class="badge badge-yellow">Parcial</span>'
+                : '<span class="badge badge-red">Em Aberto</span>';
+            html += `
+                <tr class="row-${item.status === 'parcial' ? 'partial' : 'unmatched'}">
+                    <td>${item.dataCompra}</td>
+                    <td class="text-bold">${item.nf}</td>
+                    <td class="text-right">${formatBRL(item.totalCompra)}</td>
+                    <td class="text-right">${formatBRL(item.totalPago)}</td>
+                    <td class="text-right text-red">${formatBRL(item.saldoRestante)}</td>
+                    <td class="text-center">${statusBadge}</td>
+                </tr>
+            `;
+        }
+        html += `
+                <tr class="row-total">
+                    <td colspan="2"><strong>TOTAL</strong></td>
+                    <td class="text-right"><strong>${formatBRL(totalCompra)}</strong></td>
+                    <td class="text-right"><strong>${formatBRL(totalPago)}</strong></td>
+                    <td class="text-right text-red"><strong>${formatBRL(totalSaldo)}</strong></td>
+                    <td></td>
+                </tr>
+            </tbody></table></div>
+        `;
+        tabComp.innerHTML = html;
+    }
+
+    // Tab 2: Conciliados
+    const tabConc = document.getElementById('tab-conciliado');
+    let htmlConc = `<div class="table-wrapper"><table>
+        <thead><tr>
+            <th>NF</th><th>Data</th>
+            <th class="text-right">Compra</th>
+            <th class="text-right">Pago</th>
+            <th class="text-right">Saldo</th>
+            <th class="text-center">Status</th>
+        </tr></thead><tbody>`;
+    const sorted = [...result.conciliados].sort((a, b) => {
+        const order = { 'aberto': 0, 'parcial': 1, 'liquidado': 2 };
+        return (order[a.status] || 0) - (order[b.status] || 0);
+    });
+    for (const item of sorted) {
+        const badgeCls = item.status === 'liquidado' ? 'badge-green' : (item.status === 'parcial' ? 'badge-yellow' : 'badge-red');
+        const badgeText = item.status === 'liquidado' ? 'Liquidado' : (item.status === 'parcial' ? 'Parcial' : 'Em Aberto');
+        const rowCls = item.status === 'liquidado' ? 'row-matched' : (item.status === 'parcial' ? 'row-partial' : 'row-unmatched');
+        htmlConc += `
+            <tr class="${rowCls}">
+                <td class="text-bold">${item.nf}</td>
+                <td>${item.dataCompra}</td>
+                <td class="text-right">${formatBRL(item.totalCompra)}</td>
+                <td class="text-right">${formatBRL(item.totalPago)}</td>
+                <td class="text-right">${item.saldoRestante > 0.01 ? formatBRL(item.saldoRestante) : '-'}</td>
+                <td class="text-center"><span class="badge ${badgeCls}">${badgeText}</span></td>
+            </tr>`;
+    }
+    htmlConc += '</tbody></table></div>';
+    tabConc.innerHTML = htmlConc;
+
+    // Tab 3: Todos os lançamentos
+    const tabTodos = document.getElementById('tab-todos');
+    let htmlAll = `<div class="table-wrapper"><table>
+        <thead><tr>
+            <th>Data</th><th>Lote</th><th>Histórico</th><th>Cta</th>
+            <th class="text-right">Débito</th>
+            <th class="text-right">Crédito</th>
+            <th>NFs</th>
+        </tr></thead><tbody>`;
+    for (const t of result.transacoes) {
+        const hist = t.historico.length > 60 ? t.historico.substring(0, 60) + '...' : t.historico;
+        htmlAll += `
+            <tr>
+                <td style="white-space:nowrap">${t.data}</td>
+                <td>${t.lote}</td>
+                <td title="${t.historico}">${hist}</td>
+                <td>${t.ctaContraPartida}</td>
+                <td class="text-right">${t.debito > 0 ? formatBRL(t.debito) : '-'}</td>
+                <td class="text-right">${t.credito > 0 ? formatBRL(t.credito) : '-'}</td>
+                <td>${(t.nfs || []).join(', ')}</td>
+            </tr>`;
+    }
+    htmlAll += '</tbody></table></div>';
+    tabTodos.innerHTML = htmlAll;
+
+    // Scroll to results
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function switchTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tabName).classList.add('active');
+}
+
+function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById('step' + i);
+        el.classList.remove('active', 'done');
+        if (i < n) el.classList.add('done');
+        else if (i === n) el.classList.add('active');
+    }
+}
+
+function novaConsulta() {
+    document.getElementById('resultsSection').classList.add('hidden');
+    document.getElementById('logCard').classList.add('hidden');
+    document.getElementById('fileInfo').innerHTML = '';
+    document.getElementById('btnProcessar').disabled = true;
+    pdfFiles = [];
+    resultadoConciliacao = null;
+    setStep(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ======================================================================
+// WORD DOCUMENT GENERATION
+// ======================================================================
+async function gerarRelatorioWord() {
+    if (!resultadoConciliacao) { alert('Processe o razão primeiro.'); return; }
+
+    if (typeof docx === 'undefined') {
+        alert('Biblioteca docx.js não carregou. Verifique sua conexão com a internet e recarregue a página (F5).');
+        return;
+    }
+    if (typeof saveAs === 'undefined') {
+        alert('Biblioteca FileSaver.js não carregou. Verifique sua conexão com a internet e recarregue a página (F5).');
+        return;
+    }
+
+    try {
+    const r = resultadoConciliacao;
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+        Header, Footer, AlignmentType, BorderStyle, WidthType, ShadingType,
+        PageNumber, VerticalAlign } = docx;
+
+    // =============================================
+    // IDENTIDADE VISUAL AZEVEDO CONTABILIDADE
+    // =============================================
+    const preto = "1E1E1E";
+    const dourado = "BC9C66";
+    const douradoClaro = "D4AF37";
+    const prata = "8C8C8C";
+    const azulNavy = "1B2A4A";
+    const verde = "2E7D32";
+    const vermelho = "C62828";
+    const cinzaClaro = "F5F5F0";
+    const brancoFundo = "FFFFFF";
+    const fonte = "Open Sans";
+
+    const border = { style: BorderStyle.SINGLE, size: 1, color: "B0B0B0" };
+    const borders = { top: border, bottom: border, left: border, right: border };
+    const noBorder = { style: BorderStyle.NONE, size: 0 };
+    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+    const cellMargins = { top: 60, bottom: 60, left: 100, right: 100 };
+
+    // Helper to create header cell (fundo preto/navy, texto branco)
+    function headerCell(text, width) {
+        return new TableCell({
+            borders,
+            width: { size: width, type: WidthType.DXA },
+            shading: { fill: azulNavy, type: ShadingType.CLEAR },
+            margins: cellMargins,
+            verticalAlign: VerticalAlign.CENTER,
+            children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: String(text || ''), bold: true, color: "FFFFFF", font: fonte, size: 18 })]
+            })]
+        });
+    }
+
+    // Helper to create data cell
+    function dataCell(text, width, opts = {}) {
+        return new TableCell({
+            borders,
+            width: { size: width, type: WidthType.DXA },
+            shading: opts.shading ? { fill: opts.shading, type: ShadingType.CLEAR } : undefined,
+            margins: cellMargins,
+            children: [new Paragraph({
+                alignment: opts.align || AlignmentType.LEFT,
+                children: [new TextRun({
+                    text: String(text || '-'),
+                    bold: opts.bold || false,
+                    color: opts.color || preto,
+                    font: fonte,
+                    size: opts.size || 18
+                })]
+            })]
+        });
+    }
+
+    // Page dimensions
+    const pageWidth = 11906; // A4
+    const margins = { top: 1200, right: 1000, bottom: 1200, left: 1000 };
+    const contentWidth = pageWidth - margins.left - margins.right; // ~9906
+
+    // Build composição table
+    const colWidths = [1400, 1400, 2000, 2000, 2106, 1000]; // sum = 9906
+    const tableRows = [];
+
+    // Header row
+    tableRows.push(new TableRow({
+        children: [
+            headerCell("DATA", colWidths[0]),
+            headerCell("NF", colWidths[1]),
+            headerCell("VLR. COMPRA", colWidths[2]),
+            headerCell("VLR. PAGO", colWidths[3]),
+            headerCell("SALDO A PAGAR", colWidths[4]),
+            headerCell("STATUS", colWidths[5]),
+        ]
+    }));
+
+    // Data rows
+    let totalCompra = 0, totalPago = 0, totalSaldo = 0;
+    let rowIndex = 0;
+    for (const item of r.composicao) {
+        totalCompra += item.totalCompra || 0;
+        totalPago += item.totalPago || 0;
+        totalSaldo += item.saldoRestante || 0;
+        const bg = rowIndex % 2 === 0 ? cinzaClaro : brancoFundo;
+        const statusText = item.status === 'parcial' ? 'Parcial' : 'Aberto';
+        const statusColor = item.status === 'parcial' ? dourado : vermelho;
+
+        tableRows.push(new TableRow({
+            children: [
+                dataCell(item.dataCompra, colWidths[0], { shading: bg, align: AlignmentType.CENTER }),
+                dataCell(item.nf, colWidths[1], { shading: bg, bold: true, align: AlignmentType.CENTER }),
+                dataCell(formatBRL(item.totalCompra), colWidths[2], { shading: bg, align: AlignmentType.RIGHT }),
+                dataCell(formatBRL(item.totalPago), colWidths[3], { shading: bg, align: AlignmentType.RIGHT }),
+                dataCell(formatBRL(item.saldoRestante), colWidths[4], { shading: bg, align: AlignmentType.RIGHT, bold: true, color: vermelho }),
+                dataCell(statusText, colWidths[5], { shading: bg, align: AlignmentType.CENTER, color: statusColor, bold: true, size: 16 }),
+            ]
+        }));
+        rowIndex++;
+    }
+
+    // Total row with columnSpan
+    const totalRowCells = [
+        new TableCell({
+            borders,
+            width: { size: colWidths[0] + colWidths[1], type: WidthType.DXA },
+            columnSpan: 2,
+            shading: { fill: azulNavy, type: ShadingType.CLEAR },
+            margins: cellMargins,
+            verticalAlign: VerticalAlign.CENTER,
+            children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: "TOTAL", bold: true, color: "FFFFFF", font: fonte, size: 20 })]
+            })]
+        }),
+        dataCell(formatBRL(totalCompra), colWidths[2], { shading: azulNavy, bold: true, color: "FFFFFF", align: AlignmentType.RIGHT }),
+        dataCell(formatBRL(totalPago), colWidths[3], { shading: azulNavy, bold: true, color: "FFFFFF", align: AlignmentType.RIGHT }),
+        dataCell(formatBRL(totalSaldo), colWidths[4], { shading: azulNavy, bold: true, color: "FFFFFF", align: AlignmentType.RIGHT }),
+        dataCell("", colWidths[5], { shading: azulNavy }),
+    ];
+    tableRows.push(new TableRow({ children: totalRowCells }));
+
+    // Date formatting
+    const hoje = new Date();
+    const dataHoje = hoje.toLocaleDateString('pt-BR');
+    const dataRefStr = r.dataRef ? new Date(r.dataRef + 'T12:00:00').toLocaleDateString('pt-BR') : dataHoje;
+
+    // Tipo conta
+    const tipoConta = document.getElementById('tipoConta').value;
+    const tipoLabel = tipoConta === 'fornecedor' ? 'Fornecedor' : 'Cliente';
+    const saldoLabel = tipoConta === 'fornecedor' ? 'Saldo a Pagar' : 'Saldo a Receber';
+
+    // Create info table (header details) — labels em dourado, valores em preto
+    const infoColWidths = [2500, 7406];
+    function infoRow(label, value) {
+        return new TableRow({ children: [
+            new TableCell({ borders: noBorders, width: { size: infoColWidths[0], type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 0, right: 0 },
+                children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, font: fonte, size: 20, color: dourado })] })] }),
+            new TableCell({ borders: noBorders, width: { size: infoColWidths[1], type: WidthType.DXA }, margins: { top: 40, bottom: 40, left: 0, right: 0 },
+                children: [new Paragraph({ children: [new TextRun({ text: String(value || '-'), font: fonte, size: 20, color: preto })] })] }),
+        ]});
+    }
+    const infoTable = new Table({
+        width: { size: contentWidth, type: WidthType.DXA },
+        columnWidths: infoColWidths,
+        rows: [
+            infoRow("Empresa:", r.empresa),
+            infoRow("CNPJ:", r.cnpj),
+            infoRow(`${tipoLabel}:`, r.conta),
+            infoRow("Conta Contábil:", r.contaCodigo),
+            infoRow("Data de Referência:", dataRefStr),
+        ]
+    });
+
+    // Summary stats
+    const nfLiq = r.conciliados ? r.conciliados.filter(c => c.status === 'liquidado').length : 0;
+    const nfAberto = r.composicao ? r.composicao.length : 0;
+    const totalNFs = r.conciliados ? r.conciliados.length : 0;
+    const pctConc = totalNFs > 0 ? Math.round((nfLiq / totalNFs) * 100) : 0;
+
+    // Create document with Azevedo identity
+    const doc = new Document({
+        styles: {
+            default: { document: { run: { font: fonte, size: 20, color: preto } } },
+        },
+        sections: [{
+            properties: {
+                page: {
+                    size: { width: pageWidth, height: 16838 },
+                    margin: margins
+                }
+            },
+            headers: {
+                default: new Header({
+                    children: [
+                        new Paragraph({
+                            alignment: AlignmentType.LEFT,
+                            spacing: { after: 100 },
+                            border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: dourado, space: 8 } },
+                            children: [
+                                new TextRun({ text: "AZEVEDO CONTABILIDADE", bold: true, font: fonte, size: 22, color: preto }),
+                                new TextRun({ text: "    |    Composição de Saldo", font: fonte, size: 18, color: prata }),
+                            ]
+                        }),
+                    ]
+                })
+            },
+            footers: {
+                default: new Footer({
+                    children: [
+                        new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            border: { top: { style: BorderStyle.SINGLE, size: 1, color: dourado, space: 4 } },
+                            children: [
+                                new TextRun({ text: "Azevedo Contabilidade | Av. Antônio Basílio, 3025 - Lagoa Nova, Natal/RN | (84) 3211-0042 | ", font: fonte, size: 13, color: prata }),
+                                new TextRun({ text: "Pág. ", font: fonte, size: 13, color: prata }),
+                                new TextRun({ children: [PageNumber.CURRENT], font: fonte, size: 13, color: prata }),
+                            ]
+                        })
+                    ]
+                })
+            },
+            children: [
+                // Title — preto com linha dourada
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { before: 200, after: 60 },
+                    children: [
+                        new TextRun({ text: "COMPOSIÇÃO DE SALDO", bold: true, font: fonte, size: 32, color: preto }),
+                    ]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 40 },
+                    children: [
+                        new TextRun({ text: "━━━━━━━━━━━━━━━━━━━━━━", font: fonte, size: 14, color: dourado }),
+                    ]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 300 },
+                    children: [
+                        new TextRun({ text: `${tipoLabel}es e Clientes — Conciliação Automática`, font: fonte, size: 20, color: prata }),
+                    ]
+                }),
+
+                // Info table
+                infoTable,
+
+                // Separator dourado
+                new Paragraph({ spacing: { before: 200, after: 200 }, border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: dourado, space: 1 } }, children: [] }),
+
+                // Summary paragraph
+                new Paragraph({
+                    spacing: { before: 100, after: 100 },
+                    children: [
+                        new TextRun({ text: "Resumo da Conciliação: ", bold: true, font: fonte, size: 20, color: dourado }),
+                        new TextRun({ text: `${totalNFs} NFs processadas, `, font: fonte, size: 20, color: preto }),
+                        new TextRun({ text: `${nfLiq} liquidadas`, font: fonte, size: 20, color: verde, bold: true }),
+                        new TextRun({ text: ` e `, font: fonte, size: 20, color: preto }),
+                        new TextRun({ text: `${nfAberto} em aberto`, font: fonte, size: 20, color: vermelho, bold: true }),
+                        new TextRun({ text: ` (${pctConc}% conciliado).`, font: fonte, size: 20, color: preto }),
+                    ]
+                }),
+
+                new Paragraph({ spacing: { before: 200, after: 100 },
+                    children: [new TextRun({ text: `ITENS NÃO LIQUIDADOS (${saldoLabel})`, bold: true, font: fonte, size: 22, color: preto })]
+                }),
+
+                // Main table
+                new Table({
+                    width: { size: contentWidth, type: WidthType.DXA },
+                    columnWidths: colWidths,
+                    rows: tableRows
+                }),
+
+                // Final saldo highlight — caixa com borda dourada
+                new Paragraph({ spacing: { before: 300, after: 100 }, children: [] }),
+                new Table({
+                    width: { size: contentWidth, type: WidthType.DXA },
+                    columnWidths: [contentWidth],
+                    rows: [new TableRow({
+                        children: [new TableCell({
+                            borders: { top: { style: BorderStyle.SINGLE, size: 3, color: dourado },
+                                bottom: { style: BorderStyle.SINGLE, size: 3, color: dourado },
+                                left: { style: BorderStyle.SINGLE, size: 3, color: dourado },
+                                right: { style: BorderStyle.SINGLE, size: 3, color: dourado } },
+                            width: { size: contentWidth, type: WidthType.DXA },
+                            shading: { fill: "FBF7F0", type: ShadingType.CLEAR },
+                            margins: { top: 120, bottom: 120, left: 200, right: 200 },
+                            children: [new Paragraph({
+                                alignment: AlignmentType.CENTER,
+                                children: [
+                                    new TextRun({ text: `SALDO TOTAL DA COMPOSIÇÃO: `, bold: true, font: fonte, size: 24, color: preto }),
+                                    new TextRun({ text: formatBRL(r.totalComposicao || 0), bold: true, font: fonte, size: 28, color: vermelho }),
+                                ]
+                            })]
+                        })]
+                    })]
+                }),
+
+                // Signature lines
+                new Paragraph({ spacing: { before: 600 }, children: [] }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { before: 200 },
+                    children: [new TextRun({ text: "________________________________________", font: fonte, size: 20, color: prata })]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 40 },
+                    children: [new TextRun({ text: "Azevedo Contabilidade", bold: true, font: fonte, size: 18, color: preto })]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: "Responsável pela Conciliação", font: fonte, size: 16, color: prata })]
+                }),
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    spacing: { before: 60 },
+                    children: [new TextRun({ text: "www.azevedocontabilidade.com.br", font: fonte, size: 14, color: dourado })]
+                }),
+            ]
+        }]
+    });
+
+    // Generate and download
+    const buffer = await Packer.toBlob(doc);
+    const contaNome = (r.conta || 'Conta').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    const nomeArquivo = `Composicao_Saldo_${contaNome}_${dataRefStr.replace(/\//g, '-')}.docx`;
+    saveAs(buffer, nomeArquivo);
+
+    } catch (err) {
+        console.error('Erro ao gerar relatório Word:', err);
+        alert('Erro ao gerar relatório: ' + err.message + '\n\nVeja o console (F12) para detalhes.');
+    }
+}
+
+</script>
+</body>
+</html>
