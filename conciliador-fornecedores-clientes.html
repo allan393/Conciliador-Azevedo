@@ -13,6 +13,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --azul-escuro: #1a365d;
@@ -350,16 +351,16 @@
     <div class="card" id="uploadCard">
         <div class="card-header">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3-3 3 3"/></svg>
-            Upload do Razão Contábil (PDF)
+            Upload do Razão Contábil (PDF, Excel ou CSV)
         </div>
         <div class="card-body">
             <div class="upload-zone" id="uploadZone">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" stroke-width="1.5">
                     <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>
                 </svg>
-                <h3>Arraste o PDF do Razão aqui ou clique para selecionar</h3>
-                <p>Aceita relatórios do sistema Domínio (Thomson Reuters) e similares</p>
-                <input type="file" id="fileInput" accept=".pdf" multiple>
+                <h3>Arraste o Razão aqui ou clique para selecionar</h3>
+                <p>Aceita PDF, Excel (.xlsx/.xls) e CSV. Relatórios do sistema Domínio (Thomson Reuters) e similares</p>
+                <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls,.csv" multiple>
                 <div id="fileInfo"></div>
             </div>
 
@@ -454,7 +455,7 @@
 // ======================================================================
 // GLOBAL STATE
 // ======================================================================
-let pdfFiles = [];
+let uploadedFiles = [];
 let resultadoConciliacao = null;
 let dadosEmpresa = {};
 let dadosConta = {};
@@ -479,12 +480,29 @@ uploadZone.addEventListener('drop', (e) => {
 fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
 function handleFiles(files) {
-    pdfFiles = Array.from(files).filter(f => f.type === 'application/pdf');
-    if (pdfFiles.length === 0) { alert('Por favor, selecione arquivos PDF.'); return; }
+    uploadedFiles = Array.from(files).filter(f => {
+        const type = f.type;
+        const name = f.name.toLowerCase();
+        return type === 'application/pdf' ||
+               type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+               type === 'application/vnd.ms-excel' ||
+               type === 'text/csv' ||
+               name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv');
+    });
+
+    if (uploadedFiles.length === 0) {
+        alert('Por favor, selecione arquivos PDF, Excel (.xlsx/.xls) ou CSV.');
+        return;
+    }
+
     const info = document.getElementById('fileInfo');
-    info.innerHTML = pdfFiles.map(f =>
-        `<div class="file-badge">📄 ${f.name} (${(f.size/1024).toFixed(0)} KB)</div>`
-    ).join('');
+    info.innerHTML = uploadedFiles.map(f => {
+        let icon = '📄';
+        if (f.name.toLowerCase().endsWith('.pdf')) icon = '📋';
+        else if (f.name.toLowerCase().endsWith('.csv')) icon = '📊';
+        else if (f.name.toLowerCase().match(/\.xlsx?$/i)) icon = '📑';
+        return `<div class="file-badge">${icon} ${f.name} (${(f.size/1024).toFixed(0)} KB)</div>`;
+    }).join('');
     document.getElementById('btnProcessar').disabled = false;
 }
 
@@ -517,16 +535,22 @@ async function extractTextFromPDF(file) {
 }
 
 function groupIntoLines(items) {
-    items.sort((a, b) => a.y - b.y || a.x - b.x);
+    // CRITICAL FIX: sort by PAGE first, then Y, then X
+    // Without page sorting, items from different pages with the same Y coordinate
+    // get merged into a single line, corrupting all parsed data
+    items.sort((a, b) => (a.page || 1) - (b.page || 1) || a.y - b.y || a.x - b.x);
     const lines = [];
     let currentLine = [];
     let currentY = -999;
+    let currentPage = -1;
 
     for (const item of items) {
-        if (Math.abs(item.y - currentY) > 4) {
+        const itemPage = item.page || 1;
+        if (itemPage !== currentPage || Math.abs(item.y - currentY) > 4) {
             if (currentLine.length > 0) lines.push(currentLine);
             currentLine = [item];
             currentY = item.y;
+            currentPage = itemPage;
         } else {
             currentLine.push(item);
         }
@@ -535,7 +559,7 @@ function groupIntoLines(items) {
 
     return lines.map(line => {
         line.sort((a, b) => a.x - b.x);
-        return { items: line, text: line.map(i => i.text).join(' '), y: line[0].y };
+        return { items: line, text: line.map(i => i.text).join(' '), y: line[0].y, page: line[0].page || 1 };
     });
 }
 
@@ -703,29 +727,42 @@ function parseRazao(lines) {
                 saldoTipo: parsed.saldoTipo || 'C'
             };
         } else if (pendingTx) {
-            // Continuation line — append to historico
+            // Continuation line — append to historico ONLY, be careful with values
             const clean = lt.trim();
             if (clean && !clean.match(/^(RAZÃO|CONSOLIDADO|Per[ií]odo|C\.?N\.?P\.?J|Empresa:|Folha:|Conta:|Data\s+(Lote|N[uú]mero)|Sistema licenciado|Total da conta)/i)) {
-                // Check if line has a saldo value we missed
-                let hasSaldo = false;
+                // Only update saldo if it's clearly a saldo value AND pendingTx.saldo is still 0
+                // DO NOT re-parse debito/credito from continuation lines
                 for (const item of lines[i].items) {
                     const m = item.text.trim().match(/^([\d.,]+)([CD])$/);
-                    if (m && cols) {
-                        const col = classifyByX(item.x, cols);
-                        if ((col === 'saldoExercicio' || col === 'saldo') && pendingTx.saldo === 0) {
-                            pendingTx.saldo = parseDecimalBR(m[1]);
-                            pendingTx.saldoTipo = m[2];
-                            hasSaldo = true;
+                    if (m && pendingTx.saldo === 0) {
+                        const val = parseDecimalBR(m[1]);
+                        // Only treat as saldo if it looks like a closing balance (larger value)
+                        if (val > 10) {
+                            if (cols) {
+                                const col = classifyByX(item.x, cols);
+                                if (col === 'saldoExercicio' || col === 'saldo') {
+                                    pendingTx.saldo = val;
+                                    pendingTx.saldoTipo = m[2];
+                                }
+                            } else {
+                                // Fallback: assume rightmost C/D value is saldo
+                                pendingTx.saldo = val;
+                                pendingTx.saldoTipo = m[2];
+                            }
                         }
-                    } else if (m && !cols) {
-                        pendingTx.saldo = parseDecimalBR(m[1]);
-                        pendingTx.saldoTipo = m[2];
-                        hasSaldo = true;
                     }
                 }
-                // Append text to historico (exclude pure numeric items)
+
+                // Append text to historico (exclude pure numeric items and C/D suffixed values)
                 const textParts = lines[i].items
-                    .filter(it => !it.text.trim().match(/^[\d.,]+[CD]?$/))
+                    .filter(it => {
+                        const t = it.text.trim();
+                        // Exclude pure numbers with C/D suffix
+                        if (t.match(/^[\d.,]+[CD]$/)) return false;
+                        // Exclude pure decimal numbers
+                        if (t.match(/^[\d.,]+$/)) return false;
+                        return t.length > 0;
+                    })
                     .map(it => it.text.trim())
                     .filter(t => t.length > 0);
                 if (textParts.length > 0) {
@@ -954,6 +991,25 @@ function postProcessTransactions(data) {
 
     // Store final calculated balance
     data.saldoFinalCalculado = runningBalance;
+
+    // SANITY CHECK: Flag suspicious transactions where debito+credito seems impossibly large
+    for (let i = 0; i < txns.length; i++) {
+        const t = txns[i];
+        const sumAmounts = t.debito + t.credito;
+
+        // Check if transaction amount is suspiciously large compared to saldo progression
+        // e.g., if debito=22k and credito=30k from two separate transactions merged into one
+        if (sumAmounts > 0 && i < txns.length - 1) {
+            const nextTx = txns[i + 1];
+            const saldoChange = Math.abs(t.saldo - (i > 0 ? txns[i-1].saldo : data.saldoAnterior));
+
+            // If transaction amount >> saldo change, it might be merged
+            if (sumAmounts > saldoChange * 1.5 && saldoChange > 100) {
+                console.warn(`Possible merged transaction at idx ${i}: amounts=${sumAmounts.toFixed(2)}, saldo change=${saldoChange.toFixed(2)}, NF=${t.nfs}`);
+            }
+        }
+    }
+
     return data;
 }
 
@@ -964,23 +1020,44 @@ function extractNFNumbers(historico) {
     const nfs = new Set();
     const h = historico.replace(/\s+/g, ' ');
 
+    // IMPORTANT: Only extract NF numbers that are explicitly mentioned in patterns
+    // This prevents picking up numbers from continuation lines of adjacent transactions
+
     // Pattern 1: "COMPRAS DE MERCADORIAS NF NF 410111" or "NF NF410111"
-    for (const m of h.matchAll(/NFs?\s*(?:NFs?\s*)?(\d{4,})/gi)) nfs.add(m[1]);
+    // Only extract if clearly preceded by NF keyword
+    for (const m of h.matchAll(/\bNFs?\s*(?:NFs?\s*)?(\d{4,})/gi)) {
+        // Verify it's not part of a longer number sequence (avoid picking up last digits of adjacent values)
+        const nf = m[1];
+        // NF numbers are typically 4-6 digits
+        if (nf.length <= 6) nfs.add(nf);
+    }
 
-    // Pattern 2: "COMPRAS DE MERCADORIAS 27022 ALBEMA" (number after MERCADORIAS, before supplier name)
-    for (const m of h.matchAll(/MERCADORIAS\s+(\d{4,})/gi)) nfs.add(m[1]);
+    // Pattern 2: "COMPRAS DE MERCADORIAS 27022 ALBEMA" (number immediately after MERCADORIAS)
+    // Only take the first number after MERCADORIAS to avoid continuation line numbers
+    for (const m of h.matchAll(/MERCADORIAS\s+(\d{4,6})(?:\s|$)/gi)) {
+        nfs.add(m[1]);
+        break; // Only take the first match to avoid multiple numbers from continuation
+    }
 
-    // Pattern 3: 'Pagamento efetuado: "NF 26641 PARC 03-05"' or 'Pagamento efetuado: NF 27366 parc 05'
-    for (const m of h.matchAll(/Pagamento\s+efetuado[:\s]*["""]?\s*(?:REF\s+)?NFs?\s*(\d{4,})/gi)) nfs.add(m[1]);
+    // Pattern 3: 'Pagamento efetuado: "NF 26641 PARC 03-05"'
+    for (const m of h.matchAll(/Pagamento\s+efetuado[:\s]*["""]?\s*(?:REF\s+)?NFs?\s*(\d{4,6})/gi)) {
+        nfs.add(m[1]);
+    }
 
     // Pattern 4: "REF NF 26641 PARC 03-05"
-    for (const m of h.matchAll(/REF\s+NFs?\s*(\d{4,})/gi)) nfs.add(m[1]);
+    for (const m of h.matchAll(/REF\s+NFs?\s*(\d{4,6})/gi)) {
+        nfs.add(m[1]);
+    }
 
     // Pattern 5: "PGTO NF 745635/001" or "PGTO 716769/001"
-    for (const m of h.matchAll(/PGTO\s*(?:NFs?\s*)?(\d{4,})(?:\/\d+)?/gi)) nfs.add(m[1]);
+    for (const m of h.matchAll(/PGTO\s*(?:NFs?\s*)?(\d{4,6})(?:\/\d+)?/gi)) {
+        nfs.add(m[1]);
+    }
 
     // Pattern 6: "CONF NF 56609" or "CONF NF NF 56609"
-    for (const m of h.matchAll(/CONF\s*NFs?\s*(?:NFs?\s*)?(\d{4,})/gi)) nfs.add(m[1]);
+    for (const m of h.matchAll(/CONF\s*NFs?\s*(?:NFs?\s*)?(\d{4,6})/gi)) {
+        nfs.add(m[1]);
+    }
 
     // Pattern 7: "Baixado pelo sistema financeiro" → no NF, return empty
 
@@ -1196,6 +1273,311 @@ function conciliar(data) {
 }
 
 // ======================================================================
+// EXCEL/CSV PARSING SUPPORT
+// ======================================================================
+async function parseExcelFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                // Try multiple read strategies for old .xls BIFF formats (Domínio)
+                let workbook;
+                const binaryStr = e.target.result;
+
+                // Strategy 1: binary string (best for old .xls BIFF5/BIFF8)
+                try {
+                    workbook = XLSX.read(binaryStr, { type: 'binary', cellDates: true, cellNF: true });
+                } catch (e1) {
+                    console.warn('Binary read failed, trying base64...', e1);
+                    // Strategy 2: base64
+                    try {
+                        const b64 = btoa(binaryStr);
+                        workbook = XLSX.read(b64, { type: 'base64', cellDates: true });
+                    } catch (e2) {
+                        console.warn('Base64 read failed, trying array...', e2);
+                        // Strategy 3: array buffer
+                        const arr = new Uint8Array(binaryStr.length);
+                        for (let i = 0; i < binaryStr.length; i++) arr[i] = binaryStr.charCodeAt(i) & 0xFF;
+                        workbook = XLSX.read(arr, { type: 'array', cellDates: true });
+                    }
+                }
+
+                console.log('SheetJS workbook loaded:', workbook.SheetNames);
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Log sheet range for debugging
+                const range = worksheet['!ref'];
+                console.log('Sheet range:', range);
+
+                // Use defval to preserve empty cells in sparse rows
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true });
+                console.log('Rows parsed:', jsonData.length, 'First row:', jsonData[0]);
+
+                resolve(jsonData);
+            } catch (err) {
+                console.error('Excel parse error:', err);
+                reject(new Error('Não foi possível ler o arquivo Excel. Tente exportar como .xlsx no Domínio, ou use o formato PDF. Erro: ' + err.message));
+            }
+        };
+        reader.onerror = reject;
+        // Use readAsBinaryString for better .xls compatibility
+        reader.readAsBinaryString(file);
+    });
+}
+
+async function parseCSVFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const text = e.target.result;
+                const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                const data = lines.map(line => line.split(/[,;]/));
+                resolve(data);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsText(file, 'utf-8');
+    });
+}
+
+function parseExcelRazao(rows) {
+    const transacoes = [];
+    let empresa = '', cnpj = '', periodo = '', conta = '', contaCodigo = '';
+    let saldoAnterior = 0;
+    let saldoAnteriorTipo = 'C';
+
+    // Helper: convert cell value to string
+    function cellStr(val) {
+        if (val === null || val === undefined || val === '') return '';
+        if (val instanceof Date) {
+            const d = val.getDate().toString().padStart(2, '0');
+            const m = (val.getMonth() + 1).toString().padStart(2, '0');
+            const y = val.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+        return val.toString().trim();
+    }
+
+    // Helper: convert cell to number (handles both BR format strings and raw numbers)
+    function cellNum(val) {
+        if (val === null || val === undefined || val === '') return 0;
+        if (typeof val === 'number') return Math.abs(round2(val));
+        const str = val.toString().replace(/[CD]$/g, '').trim();
+        return parseDecimalBR(str);
+    }
+
+    // Helper: check if a value looks like a date
+    function isDate(val) {
+        if (val instanceof Date) return true;
+        if (typeof val === 'string' && val.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) return true;
+        // Excel serial date number (between 1900 and 2100 roughly)
+        if (typeof val === 'number' && val > 30000 && val < 80000) return true;
+        return false;
+    }
+
+    // Helper: convert Excel serial number to date string
+    function serialToDateStr(serial) {
+        if (serial instanceof Date) return cellStr(serial);
+        if (typeof serial === 'number' && serial > 30000) {
+            const d = new Date((serial - 25569) * 86400 * 1000);
+            return cellStr(d);
+        }
+        return cellStr(serial);
+    }
+
+    // Find header row by looking for columns with Débito/Crédito keywords
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(rows.length, 20); i++) {
+        const row = rows[i];
+        if (!row) continue;
+        let hasData = false, hasDebCred = false;
+        for (let j = 0; j < row.length; j++) {
+            const c = cellStr(row[j]).toUpperCase();
+            if (c === 'DATA') hasData = true;
+            if (c.match(/D[ÉE]BITO/) || c.match(/CR[ÉE]DITO/)) hasDebCred = true;
+        }
+        if (hasData && hasDebCred) {
+            headerRowIdx = i;
+            break;
+        }
+    }
+
+    if (headerRowIdx === -1) {
+        throw new Error('Não foi encontrada linha de cabeçalho com Data/Débito/Crédito. Verifique se o arquivo está no formato correto do Domínio.');
+    }
+
+    // Extract company info from rows above header
+    // Domínio format: Row 0: [A]'Empresa:' [C]'NOME DA EMPRESA' [L]'Folha:' [N]1
+    //                 Row 1: [A]'C.N.P.J.:' [C]'XX.XXX.XXX/XXXX-XX'
+    //                 Row 2: [A]'Período:' [C]'01/12/2025 - 28/02/2026'
+    for (let i = 0; i < headerRowIdx; i++) {
+        const row = rows[i];
+        if (!row) continue;
+
+        // Check cell A for labels, cell C (or B) for values
+        const cellA = cellStr(row[0]).toLowerCase();
+        const cellB = cellStr(row[1]);
+        const cellC = cellStr(row[2]);
+
+        if (cellA.match(/empresa/i)) {
+            // Value is typically in column C or concatenated from B+C
+            empresa = cellC || cellB || '';
+            // Also scan remaining cells for longer company name
+            for (let j = 3; j < row.length; j++) {
+                const v = cellStr(row[j]);
+                if (v && v.length > 3 && !v.match(/^(Folha|Página)/i)) {
+                    empresa += ' ' + v;
+                }
+            }
+            empresa = empresa.trim();
+        }
+        if (cellA.match(/c\.?n\.?p\.?j/i)) {
+            const allCells = row.map(c => cellStr(c)).join(' ');
+            const m = allCells.match(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/);
+            if (m) cnpj = m[1];
+        }
+        if (cellA.match(/per[ií]odo/i)) {
+            const allCells = row.map(c => cellStr(c)).join(' ');
+            const m = allCells.match(/(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/);
+            if (m) periodo = m[0];
+        }
+
+        // Conta row: [A]'Conta:' [B]3602 [C]'2.1.1.01.001.00035' [F]'ABASTECA COMERCIO...'
+        if (cellA.match(/conta/i) && !cellA.match(/contabil|consolidado/i)) {
+            const code1 = cellStr(row[1]);
+            const code2 = cellStr(row[2]);
+            contaCodigo = code1 + (code2 ? ' - ' + code2 : '');
+            // Look for the account name in columns D-H
+            for (let j = 3; j < Math.min(row.length, 12); j++) {
+                const v = cellStr(row[j]);
+                if (v && v.length > 3) {
+                    conta = v;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Find column indices from header row
+    const headerRow = rows[headerRowIdx];
+    let dataCol = -1, loteCol = -1, historicoCol = -1, ctaCol = -1, debitoCol = -1, creditoCol = -1, saldoCol = -1;
+
+    for (let i = 0; i < headerRow.length; i++) {
+        const col = cellStr(headerRow[i]).toUpperCase();
+        if (col === 'DATA') dataCol = i;
+        else if (col.match(/^LOTE$|^N[ÚU]MERO$/)) loteCol = i;
+        else if (col.match(/HIST[ÓO]RICO/)) historicoCol = i;
+        else if (col.match(/CTA|C\.?T\.?A|CONTA.*PART/i)) ctaCol = i;
+        else if (col.match(/D[ÉE]BITO/)) debitoCol = i;
+        else if (col.match(/CR[ÉE]DITO/)) creditoCol = i;
+        else if (col.match(/SALDO/)) saldoCol = i; // Takes last SALDO column (Saldo-Exercício)
+    }
+
+    console.log('Excel columns detected:', { dataCol, loteCol, historicoCol, ctaCol, debitoCol, creditoCol, saldoCol });
+
+    // Process rows after header
+    let currentRowIdx = headerRowIdx + 1;
+
+    // Skip "Conta:" row if present right after header (Domínio format)
+    if (currentRowIdx < rows.length) {
+        const row = rows[currentRowIdx];
+        if (row) {
+            const cellA = cellStr(row[0]).toLowerCase();
+            if (cellA.match(/^conta/i)) {
+                // This is the conta detail row, extract info if not already found
+                if (!conta) {
+                    for (let j = 3; j < Math.min(row.length, 12); j++) {
+                        const v = cellStr(row[j]);
+                        if (v && v.length > 3) { conta = v; break; }
+                    }
+                }
+                currentRowIdx++;
+            }
+        }
+    }
+
+    // Check for SALDO ANTERIOR
+    if (currentRowIdx < rows.length) {
+        const row = rows[currentRowIdx];
+        if (row) {
+            const rowStr = row.map(c => cellStr(c)).join(' ');
+            if (rowStr.match(/SALDO\s+ANTERIOR/i)) {
+                // Saldo anterior is in the saldo column
+                if (saldoCol >= 0) {
+                    const val = row[saldoCol];
+                    if (typeof val === 'number') {
+                        saldoAnterior = Math.abs(val);
+                        saldoAnteriorTipo = val >= 0 ? 'D' : 'C';
+                    } else {
+                        saldoAnterior = cellNum(val);
+                        const rawStr = cellStr(val);
+                        saldoAnteriorTipo = rawStr.match(/D$/i) ? 'D' : 'C';
+                    }
+                }
+                currentRowIdx++;
+            }
+        }
+    }
+
+    // Parse transaction rows
+    for (let i = currentRowIdx; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+
+        const rowStr = row.map(c => cellStr(c)).join(' ').trim();
+        if (!rowStr) continue;
+        if (rowStr.match(/^(Total\s+da\s+conta|TOTAL|RAZÃO|CONSOLIDADO|Sistema\s+licenciado)/i)) continue;
+
+        // Check for date in the data column
+        const rawDate = dataCol >= 0 ? row[dataCol] : row[0];
+        if (!rawDate || !isDate(rawDate)) continue;
+
+        const dataStr = serialToDateStr(rawDate);
+        if (!dataStr.match(/\d{2}\/\d{2}\/\d{4}/)) continue;
+
+        // Get raw numeric values
+        const rawDebito = debitoCol >= 0 ? row[debitoCol] : 0;
+        const rawCredito = creditoCol >= 0 ? row[creditoCol] : 0;
+        const rawSaldo = saldoCol >= 0 ? row[saldoCol] : 0;
+
+        const debito = cellNum(rawDebito);
+        const credito = cellNum(rawCredito);
+
+        // Saldo: in Domínio Excel, it's a signed number (negative = C, positive = D)
+        let saldo = 0;
+        let saldoTipo = 'C';
+        if (typeof rawSaldo === 'number') {
+            saldo = Math.abs(round2(rawSaldo));
+            saldoTipo = rawSaldo >= 0 ? 'D' : 'C';
+        } else {
+            const saldoStr = cellStr(rawSaldo);
+            saldo = cellNum(rawSaldo);
+            saldoTipo = saldoStr.match(/D$/i) ? 'D' : 'C';
+        }
+
+        const tx = {
+            data: dataStr,
+            lote: loteCol >= 0 ? cellStr(row[loteCol]) : '',
+            historico: historicoCol >= 0 ? cellStr(row[historicoCol]) : '',
+            ctaContraPartida: ctaCol >= 0 ? cellStr(row[ctaCol]) : '',
+            debito: debito,
+            credito: credito,
+            saldo: saldo,
+            saldoTipo: saldoTipo
+        };
+
+        transacoes.push(tx);
+    }
+
+    console.log(`Excel parsed: ${transacoes.length} transactions, empresa=${empresa}, conta=${conta}`);
+    return { empresa, cnpj, periodo, conta, contaCodigo, saldoAnterior, saldoAnteriorTipo, transacoes };
+}
+
+// ======================================================================
 // MAIN PROCESSING FLOW
 // ======================================================================
 async function processarRazao() {
@@ -1218,25 +1600,52 @@ async function processarRazao() {
     setProgress(10);
 
     try {
-        // Step 1: Extract text from PDFs
-        let allItems = [];
-        for (const file of pdfFiles) {
+        // Determine file type and parse accordingly
+        const file = uploadedFiles[0];
+        const fileName = file.name.toLowerCase();
+        let data;
+
+        if (fileName.endsWith('.pdf')) {
+            // Step 1: Extract text from PDF
             log(`📄 Extraindo texto de: ${file.name}`, 'log-info');
+            let allItems = [];
             const items = await extractTextFromPDF(file);
             allItems = allItems.concat(items);
             log(`   ✓ ${items.length} elementos de texto extraídos`, 'log-success');
+            setProgress(30);
+
+            // Step 2: Group into lines
+            log('📋 Organizando linhas do razão...', 'log-info');
+            const lines = groupIntoLines(allItems);
+            log(`   ✓ ${lines.length} linhas identificadas`, 'log-success');
+            setProgress(40);
+
+            // Step 3: Parse Razão structure (PDF)
+            log('🔍 Parseando estrutura do Razão (PDF)...', 'log-info');
+            data = parseRazao(lines);
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+            // Parse Excel file
+            log(`📑 Lendo arquivo Excel: ${file.name}`, 'log-info');
+            const excelData = await parseExcelFile(file);
+            log(`   ✓ ${excelData.length} linhas lidas`, 'log-success');
+            setProgress(30);
+
+            log('🔍 Parseando estrutura do Razão (Excel)...', 'log-info');
+            data = parseExcelRazao(excelData);
+            setProgress(40);
+        } else if (fileName.endsWith('.csv')) {
+            // Parse CSV file
+            log(`📊 Lendo arquivo CSV: ${file.name}`, 'log-info');
+            const csvData = await parseCSVFile(file);
+            log(`   ✓ ${csvData.length} linhas lidas`, 'log-success');
+            setProgress(30);
+
+            log('🔍 Parseando estrutura do Razão (CSV)...', 'log-info');
+            data = parseExcelRazao(csvData);
+            setProgress(40);
+        } else {
+            throw new Error('Formato de arquivo não suportado: ' + fileName);
         }
-        setProgress(30);
-
-        // Step 2: Group into lines
-        log('📋 Organizando linhas do razão...', 'log-info');
-        const lines = groupIntoLines(allItems);
-        log(`   ✓ ${lines.length} linhas identificadas`, 'log-success');
-        setProgress(40);
-
-        // Step 3: Parse Razão structure
-        log('🔍 Parseando estrutura do Razão...', 'log-info');
-        let data = parseRazao(lines);
         log(`   ✓ Empresa: ${data.empresa}`, 'log-success');
         log(`   ✓ CNPJ: ${data.cnpj}`, 'log-success');
         log(`   ✓ Conta: ${data.conta}`, 'log-success');
