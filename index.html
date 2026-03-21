@@ -153,63 +153,104 @@
             .container { padding: 24px 16px; }
             .welcome h2 { font-size: 22px; }
         }
+    
+        /* MODAL SENHA PROPOSTAS */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .modal-overlay.hidden { display: none; }
+        .modal-box {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            width: 360px;
+            max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .modal-box h3 {
+            font-size: 18px;
+            color: var(--azul-escuro);
+            margin-bottom: 6px;
+        }
+        .modal-box .modal-subtitle {
+            font-size: 13px;
+            color: var(--cinza-600);
+            margin-bottom: 20px;
+        }
+        .modal-box input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--cinza-300);
+            border-radius: 8px;
+            font-size: 15px;
+            text-align: center;
+            letter-spacing: 3px;
+        }
+        .modal-box input[type="password"]:focus {
+            outline: none;
+            border-color: var(--azul-medio);
+            box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .modal-buttons .btn-entrar {
+            flex: 1;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--azul-escuro), var(--azul-medio));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .modal-buttons .btn-entrar:hover { opacity: 0.9; }
+        .modal-buttons .btn-cancelar {
+            flex: 1;
+            padding: 12px;
+            background: var(--cinza-200);
+            color: var(--cinza-800);
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .modal-buttons .btn-cancelar:hover { background: var(--cinza-300); }
+        .modal-error {
+            color: #e53e3e;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+        }
+        .modal-error.show { display: block; }
+
     </style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div class="login-overlay" id="loginOverlay">
-    <div class="login-box">
-        <div class="login-logo"><img src="logo-azevedo.png" alt="Azevedo Contabilidade"></div>
-        <h2>Sistemas Azevedo</h2>
-        <p class="login-subtitle">Azevedo Contabilidade &mdash; Acesso Restrito</p>
-        <input type="password" id="loginPassword" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')doLogin()">
-        <button class="login-btn" onclick="doLogin()">Entrar</button>
-        <p class="login-error" id="loginError">Senha incorreta. Tente novamente.</p>
-    </div>
-</div>
 
-<script>
-function doLogin() {
-    const input = document.getElementById('loginPassword').value;
-    const errorEl = document.getElementById('loginError');
-    const senhaCorreta = atob('YXpldmVkbzIwMjY=');
-    if (input === senhaCorreta) {
-        document.getElementById('loginOverlay').classList.add('hidden');
-        document.getElementById('appContent').classList.add('visible');
-        sessionStorage.setItem('logado', 'sim');
-        errorEl.classList.remove('show');
-    } else {
-        errorEl.classList.add('show');
-        document.getElementById('loginPassword').value = '';
-        document.getElementById('loginPassword').focus();
-    }
-}
-function doLogout() {
-    sessionStorage.removeItem('logado');
-    document.getElementById('loginOverlay').classList.remove('hidden');
-    document.getElementById('appContent').classList.remove('visible');
-    document.getElementById('loginPassword').value = '';
-}
-if (sessionStorage.getItem('logado') === 'sim') {
-    document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('loginOverlay').classList.add('hidden');
-        document.getElementById('appContent').classList.add('visible');
-    });
-}
-</script>
+
+
 
 <!-- PORTAL -->
-<div class="app-content" id="appContent">
+<div class="app-content">
     <div class="header">
         <div class="header-logo"><img src="logo-azevedo.png" alt="Azevedo Contabilidade"></div>
         <div class="header-text">
             <h1>Sistemas Azevedo Contabilidade</h1>
             <p>Plataforma interna de sistemas e ferramentas</p>
         </div>
-        <div class="header-right">
-            <button class="btn-logout" onclick="doLogout()">Sair</button>
-        </div>
+        
     </div>
 
     <div class="container">
@@ -227,7 +268,7 @@ if (sessionStorage.getItem('logado') === 'sim') {
                 <span class="card-status status-online">Online</span>
             </a>
 
-            <a href="https://propostas-azevedo.streamlit.app/" target="_blank" class="system-card card-propostas">
+            <a href="#" onclick="abrirPropostas(event)" class="system-card card-propostas">
                 <div class="card-icon">&#9997;</div>
                 <h3>Propostas Comerciais</h3>
                 <p>Gerador de propostas comerciais personalizadas para captar novos clientes do escritorio.</p>
@@ -248,6 +289,49 @@ if (sessionStorage.getItem('logado') === 'sim') {
         </div>
     </div>
 </div>
+
+
+    <!-- MODAL SENHA PROPOSTAS -->
+    <div class="modal-overlay hidden" id="modalPropostas">
+        <div class="modal-box">
+            <h3>Propostas Comerciais</h3>
+            <p class="modal-subtitle">Acesso restrito &mdash; Digite a senha</p>
+            <input type="password" id="senhaPropostas" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')verificarSenhaPropostas()">
+            <div class="modal-buttons">
+                <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+                <button class="btn-entrar" onclick="verificarSenhaPropostas()">Entrar</button>
+            </div>
+            <p class="modal-error" id="modalError">Senha incorreta. Tente novamente.</p>
+        </div>
+    </div>
+
+    <script>
+        function abrirPropostas(e) {
+            e.preventDefault();
+            document.getElementById('modalPropostas').classList.remove('hidden');
+            document.getElementById('senhaPropostas').value = '';
+            document.getElementById('modalError').classList.remove('show');
+            setTimeout(() => document.getElementById('senhaPropostas').focus(), 100);
+        }
+        function fecharModal() {
+            document.getElementById('modalPropostas').classList.add('hidden');
+        }
+        function verificarSenhaPropostas() {
+            const input = document.getElementById('senhaPropostas').value;
+            const senhaCorreta = atob('YXpldmVkbzIwMjY=');
+            if (input === senhaCorreta) {
+                fecharModal();
+                window.open('https://propostas-azevedo.streamlit.app/', '_blank');
+            } else {
+                document.getElementById('modalError').classList.add('show');
+                document.getElementById('senhaPropostas').value = '';
+                document.getElementById('senhaPropostas').focus();
+            }
+        }
+        document.getElementById('modalPropostas').addEventListener('click', function(e) {
+            if (e.target === this) fecharModal();
+        });
+    </script>
 
 </body>
 </html>
