@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistemas - Azevedo Contabilidade</title>
+    <title>Sistemas – Azevedo Contabilidade</title>
     <style>
         :root {
             --azul-escuro: #1a365d;
@@ -141,6 +141,7 @@
 
         .card-conciliador .card-icon { background: #ebf4ff; color: #2b6cb0; }
         .card-propostas .card-icon { background: #f0fff4; color: #38a169; }
+        .card-nfse .card-icon { background: #fef3c7; color: #d97706; }
         .card-em-breve .card-icon { background: var(--cinza-200); color: var(--cinza-400); }
         .card-em-breve { opacity: 0.6; cursor: default; }
         .card-em-breve:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-color: transparent; }
@@ -153,94 +154,54 @@
             .container { padding: 24px 16px; }
             .welcome h2 { font-size: 22px; }
         }
-    
-        /* MODAL SENHA PROPOSTAS */
+
+        /* MODAL SENHA */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             z-index: 9999;
         }
         .modal-overlay.hidden { display: none; }
         .modal-box {
-            background: white;
-            border-radius: 16px;
-            padding: 32px;
-            width: 360px;
-            max-width: 90vw;
+            background: white; border-radius: 16px;
+            padding: 32px; width: 360px; max-width: 90vw;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             text-align: center;
         }
-        .modal-box h3 {
-            font-size: 18px;
-            color: var(--azul-escuro);
-            margin-bottom: 6px;
-        }
-        .modal-box .modal-subtitle {
-            font-size: 13px;
-            color: var(--cinza-600);
-            margin-bottom: 20px;
-        }
+        .modal-box h3 { font-size: 18px; color: var(--azul-escuro); margin-bottom: 6px; }
+        .modal-box .modal-subtitle { font-size: 13px; color: var(--cinza-600); margin-bottom: 20px; }
         .modal-box input[type="password"] {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--cinza-300);
-            border-radius: 8px;
-            font-size: 15px;
-            text-align: center;
-            letter-spacing: 3px;
+            width: 100%; padding: 12px 16px;
+            border: 2px solid var(--cinza-300); border-radius: 8px;
+            font-size: 15px; text-align: center; letter-spacing: 3px;
         }
         .modal-box input[type="password"]:focus {
-            outline: none;
-            border-color: var(--azul-medio);
+            outline: none; border-color: var(--azul-medio);
             box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
         }
         .modal-buttons {
-            display: flex;
-            gap: 12px;
-            margin-top: 16px;
+            display: flex; gap: 12px; margin-top: 16px;
         }
         .modal-buttons .btn-entrar {
-            flex: 1;
-            padding: 12px;
+            flex: 1; padding: 12px;
             background: linear-gradient(135deg, var(--azul-escuro), var(--azul-medio));
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
+            color: white; border: none; border-radius: 8px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
         }
         .modal-buttons .btn-entrar:hover { opacity: 0.9; }
         .modal-buttons .btn-cancelar {
-            flex: 1;
-            padding: 12px;
-            background: var(--cinza-200);
-            color: var(--cinza-800);
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            cursor: pointer;
+            flex: 1; padding: 12px;
+            background: var(--cinza-200); color: var(--cinza-800);
+            border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
         }
         .modal-buttons .btn-cancelar:hover { background: var(--cinza-300); }
-        .modal-error {
-            color: #e53e3e;
-            font-size: 13px;
-            margin-top: 12px;
-            display: none;
-        }
+        .modal-error { color: #e53e3e; font-size: 13px; margin-top: 12px; display: none; }
         .modal-error.show { display: block; }
-
     </style>
 </head>
 <body>
-
-
-
-
 
 <!-- PORTAL -->
 <div class="app-content">
@@ -250,7 +211,6 @@
             <h1>Sistemas Azevedo Contabilidade</h1>
             <p>Plataforma interna de sistemas e ferramentas</p>
         </div>
-        
     </div>
 
     <div class="container">
@@ -275,6 +235,13 @@
                 <span class="card-status status-online">Online</span>
             </a>
 
+            <a href="#" onclick="abrirNfse(event)" class="system-card card-nfse">
+                <div class="card-icon">&#128196;</div>
+                <h3>Emissor de NFS-e</h3>
+                <p>Emissao automatica de Notas Fiscais de Servico no portal Directa de Natal/RN. Sobe a planilha e emite em lote.</p>
+                <span class="card-status status-online">Online</span>
+            </a>
+
             <div class="system-card card-em-breve">
                 <div class="card-icon">&#9881;</div>
                 <h3>Em breve...</h3>
@@ -290,48 +257,88 @@
     </div>
 </div>
 
-
-    <!-- MODAL SENHA PROPOSTAS -->
-    <div class="modal-overlay hidden" id="modalPropostas">
-        <div class="modal-box">
-            <h3>Propostas Comerciais</h3>
-            <p class="modal-subtitle">Acesso restrito &mdash; Digite a senha</p>
-            <input type="password" id="senhaPropostas" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')verificarSenhaPropostas()">
-            <div class="modal-buttons">
-                <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
-                <button class="btn-entrar" onclick="verificarSenhaPropostas()">Entrar</button>
-            </div>
-            <p class="modal-error" id="modalError">Senha incorreta. Tente novamente.</p>
+<!-- MODAL SENHA PROPOSTAS -->
+<div class="modal-overlay hidden" id="modalPropostas">
+    <div class="modal-box">
+        <h3>Propostas Comerciais</h3>
+        <p class="modal-subtitle">Acesso restrito &mdash; Digite a senha</p>
+        <input type="password" id="senhaPropostas" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')verificarSenhaPropostas()">
+        <div class="modal-buttons">
+            <button class="btn-cancelar" onclick="fecharModal('modalPropostas')">Cancelar</button>
+            <button class="btn-entrar" onclick="verificarSenhaPropostas()">Entrar</button>
         </div>
+        <p class="modal-error" id="modalError">Senha incorreta. Tente novamente.</p>
     </div>
+</div>
 
-    <script>
-        function abrirPropostas(e) {
-            e.preventDefault();
-            document.getElementById('modalPropostas').classList.remove('hidden');
-            document.getElementById('senhaPropostas').value = '';
-            document.getElementById('modalError').classList.remove('show');
-            setTimeout(() => document.getElementById('senhaPropostas').focus(), 100);
-        }
-        function fecharModal() {
-            document.getElementById('modalPropostas').classList.add('hidden');
-        }
-        function verificarSenhaPropostas() {
-            const input = document.getElementById('senhaPropostas').value;
-            const senhaCorreta = atob('YXpldmVkbzIwMjY=');
-            if (input === senhaCorreta) {
-                fecharModal();
-                window.open('https://propostas-azevedo.streamlit.app/', '_blank');
-            } else {
-                document.getElementById('modalError').classList.add('show');
-                document.getElementById('senhaPropostas').value = '';
-                document.getElementById('senhaPropostas').focus();
-            }
-        }
-        document.getElementById('modalPropostas').addEventListener('click', function(e) {
-            if (e.target === this) fecharModal();
-        });
-    </script>
+<!-- MODAL SENHA NFS-e -->
+<div class="modal-overlay hidden" id="modalNfse">
+    <div class="modal-box">
+        <h3>Emissor de NFS-e</h3>
+        <p class="modal-subtitle">Acesso restrito &mdash; Digite a senha</p>
+        <input type="password" id="senhaNfse" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')verificarSenhaNfse()">
+        <div class="modal-buttons">
+            <button class="btn-cancelar" onclick="fecharModal('modalNfse')">Cancelar</button>
+            <button class="btn-entrar" onclick="verificarSenhaNfse()">Entrar</button>
+        </div>
+        <p class="modal-error" id="modalNfseError">Senha incorreta. Tente novamente.</p>
+    </div>
+</div>
+
+<script>
+function abrirPropostas(e) {
+    e.preventDefault();
+    document.getElementById('modalPropostas').classList.remove('hidden');
+    document.getElementById('senhaPropostas').value = '';
+    document.getElementById('modalError').classList.remove('show');
+    setTimeout(function() { document.getElementById('senhaPropostas').focus(); }, 100);
+}
+
+function abrirNfse(e) {
+    e.preventDefault();
+    document.getElementById('modalNfse').classList.remove('hidden');
+    document.getElementById('senhaNfse').value = '';
+    document.getElementById('modalNfseError').classList.remove('show');
+    setTimeout(function() { document.getElementById('senhaNfse').focus(); }, 100);
+}
+
+function fecharModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+function verificarSenhaPropostas() {
+    var input = document.getElementById('senhaPropostas').value;
+    var senhaCorreta = atob('YXpldmVkbzIwMjY=');
+    if (input === senhaCorreta) {
+        fecharModal('modalPropostas');
+        window.open('https://propostas-azevedo.streamlit.app/', '_blank');
+    } else {
+        document.getElementById('modalError').classList.add('show');
+        document.getElementById('senhaPropostas').value = '';
+        document.getElementById('senhaPropostas').focus();
+    }
+}
+
+function verificarSenhaNfse() {
+    var input = document.getElementById('senhaNfse').value;
+    var senhaCorreta = atob('YXpldmVkbzIwMjY=');
+    if (input === senhaCorreta) {
+        fecharModal('modalNfse');
+        alert('O Emissor de NFS-e roda localmente no seu computador.\n\nPara usar:\n1. Abra a pasta do sistema no seu Mac\n2. Clique duas vezes em executar.command\n3. O sistema abrira no navegador automaticamente');
+    } else {
+        document.getElementById('modalNfseError').classList.add('show');
+        document.getElementById('senhaNfse').value = '';
+        document.getElementById('senhaNfse').focus();
+    }
+}
+
+document.getElementById('modalPropostas').addEventListener('click', function(e) {
+    if (e.target === this) fecharModal('modalPropostas');
+});
+document.getElementById('modalNfse').addEventListener('click', function(e) {
+    if (e.target === this) fecharModal('modalNfse');
+});
+</script>
 
 </body>
 </html>
