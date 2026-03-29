@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistemas – Azevedo Contabilidade</title>
+    <title>Sistemas - Azevedo Contabilidade</title>
     <style>
         :root {
             --azul-escuro: #1a365d;
@@ -24,65 +24,101 @@
             color: var(--cinza-800);
             min-height: 100vh;
         }
+
+        /* LOGIN */
         .login-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 50%, #1a365d 100%);
-            display: flex; align-items: center; justify-content: center; z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
         }
         .login-overlay.hidden { display: none; }
         .login-box {
-            background: white; border-radius: 16px; padding: 40px; width: 380px; max-width: 90vw;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+            background: white; border-radius: 16px;
+            padding: 40px; width: 380px; max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
         }
-        .login-box .login-logo { width: 200px; height: auto; margin-bottom: 20px; display: inline-block; }
-        .login-box .login-logo img { width: 100%; height: auto; display: block; }
+        .login-box .login-logo {
+            width: 200px; height: auto;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        .login-box .login-logo img {
+            width: 100%; height: auto; display: block;
+        }
         .login-box h2 { font-size: 20px; color: var(--azul-escuro); margin-bottom: 4px; }
         .login-box .login-subtitle { font-size: 13px; color: var(--cinza-600); margin-bottom: 24px; }
         .login-box input[type="password"] {
-            width: 100%; padding: 12px 16px; border: 2px solid var(--cinza-300); border-radius: 8px;
+            width: 100%; padding: 12px 16px;
+            border: 2px solid var(--cinza-300); border-radius: 8px;
             font-size: 15px; text-align: center; letter-spacing: 3px;
         }
         .login-box input[type="password"]:focus {
-            outline: none; border-color: var(--azul-medio); box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
+            outline: none; border-color: var(--azul-medio);
+            box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
         }
         .login-box .login-btn {
             width: 100%; padding: 12px; margin-top: 16px;
             background: linear-gradient(135deg, var(--azul-escuro), var(--azul-medio));
-            color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+            color: white; border: none; border-radius: 8px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
         }
         .login-box .login-btn:hover { opacity: 0.9; }
         .login-error { color: #e53e3e; font-size: 13px; margin-top: 12px; display: none; }
         .login-error.show { display: block; }
-        .app-content { display: block; }
+
+        /* PORTAL */
+        .app-content { display: none; }
         .app-content.visible { display: block; }
+
         .header {
             background: linear-gradient(135deg, var(--azul-escuro) 0%, var(--azul-medio) 100%);
-            color: white; padding: 24px 40px; display: flex; align-items: center; gap: 20px;
+            color: white; padding: 24px 40px;
+            display: flex; align-items: center; gap: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .header-logo { height: 48px; display: flex; align-items: center; }
-        .header-logo img { height: 48px; width: auto; display: block; }
+        .header-logo {
+            height: 48px; display: flex; align-items: center;
+        }
+        .header-logo img {
+            height: 48px; width: auto; display: block;
+        }
         .header-text h1 { font-size: 22px; font-weight: 700; }
         .header-text p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
         .header-right { margin-left: auto; }
         .btn-logout {
-            padding: 8px 16px; background: rgba(255,255,255,0.15); color: white;
-            border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; font-size: 13px; cursor: pointer;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.15);
+            color: white; border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px; font-size: 13px; cursor: pointer;
         }
         .btn-logout:hover { background: rgba(255,255,255,0.25); }
+
         .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+
         .welcome { text-align: center; margin-bottom: 40px; }
         .welcome h2 { font-size: 26px; color: var(--azul-escuro); margin-bottom: 8px; }
         .welcome p { font-size: 15px; color: var(--cinza-600); }
-        .systems-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+
+        .systems-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 24px;
+        }
+
         .system-card {
-            background: white; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            background: white; border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             padding: 32px; text-decoration: none; color: inherit;
-            transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid transparent;
             cursor: pointer; display: block;
         }
         .system-card:hover {
-            transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
             border-color: var(--azul-medio);
         }
         .system-card .card-icon {
@@ -98,119 +134,170 @@
         }
         .status-online { background: #f0fff4; color: #38a169; }
         .status-online::before {
-            content: ''; width: 8px; height: 8px; background: #38a169;
-            border-radius: 50%; display: inline-block;
+            content: ''; width: 8px; height: 8px;
+            background: #38a169; border-radius: 50%; display: inline-block;
         }
         .status-soon { background: var(--cinza-200); color: var(--cinza-600); }
+
         .card-conciliador .card-icon { background: #ebf4ff; color: #2b6cb0; }
         .card-propostas .card-icon { background: #f0fff4; color: #38a169; }
         .card-nfse .card-icon { background: #fef3c7; color: #d97706; }
         .card-em-breve .card-icon { background: var(--cinza-200); color: var(--cinza-400); }
         .card-em-breve { opacity: 0.6; cursor: default; }
         .card-em-breve:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-color: transparent; }
+
+        /* MODALS */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); display: flex;
+            align-items: center; justify-content: center; z-index: 9000;
+        }
+        .modal-overlay.hidden { display: none; }
+        .modal-box {
+            background: white; border-radius: 16px; padding: 32px;
+            width: 400px; max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+        }
+        .modal-box h3 { font-size: 20px; color: var(--azul-escuro); margin-bottom: 4px; }
+        .modal-box .modal-subtitle { font-size: 13px; color: var(--cinza-600); margin-bottom: 20px; }
+        .modal-box .input-group { margin-bottom: 12px; text-align: left; }
+        .modal-box .input-group label {
+            display: block; font-size: 13px; font-weight: 600;
+            color: var(--cinza-800); margin-bottom: 4px;
+        }
+        .modal-box input[type="text"],
+        .modal-box input[type="password"] {
+            width: 100%; padding: 10px 14px;
+            border: 2px solid var(--cinza-300); border-radius: 8px; font-size: 14px;
+        }
+        .modal-box input:focus {
+            outline: none; border-color: var(--azul-medio);
+            box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
+        }
+        .modal-buttons { display: flex; gap: 12px; margin-top: 20px; }
+        .modal-buttons .btn-cancelar {
+            flex: 1; padding: 10px; background: var(--cinza-200);
+            color: var(--cinza-800); border: none; border-radius: 8px;
+            font-size: 14px; cursor: pointer;
+        }
+        .modal-buttons .btn-entrar {
+            flex: 1; padding: 10px;
+            background: linear-gradient(135deg, var(--azul-escuro), var(--azul-medio));
+            color: white; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .modal-error { color: #e53e3e; font-size: 13px; margin-top: 12px; display: none; }
+        .modal-error.show { display: block; }
+        .modal-info { color: var(--cinza-600); font-size: 12px; margin-top: 12px; line-height: 1.4; }
+
         .footer { text-align: center; margin-top: 48px; padding: 20px; font-size: 13px; color: var(--cinza-400); }
+
         @media (max-width: 640px) {
             .header { padding: 16px 20px; }
             .header-text h1 { font-size: 17px; }
             .container { padding: 24px 16px; }
             .welcome h2 { font-size: 22px; }
         }
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5); display: flex; align-items: center;
-            justify-content: center; z-index: 9999;
-        }
-        .modal-overlay.hidden { display: none; }
-        .modal-box {
-            background: white; border-radius: 16px; padding: 32px; width: 400px; max-width: 90vw;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
-        }
-        .modal-box h3 { font-size: 18px; color: var(--azul-escuro); margin-bottom: 6px; }
-        .modal-box .modal-subtitle { font-size: 13px; color: var(--cinza-600); margin-bottom: 20px; }
-        .modal-box input[type="password"], .modal-box input[type="text"] {
-            width: 100%; padding: 12px 16px; border: 2px solid var(--cinza-300);
-            border-radius: 8px; font-size: 15px;
-        }
-        .modal-box input[type="password"]:focus, .modal-box input[type="text"]:focus {
-            outline: none; border-color: var(--azul-medio); box-shadow: 0 0 0 3px rgba(43,108,176,0.15);
-        }
-        .modal-box .input-group { margin-bottom: 12px; text-align: left; }
-        .modal-box .input-group label {
-            display: block; font-size: 13px; font-weight: 600;
-            color: var(--cinza-800); margin-bottom: 4px;
-        }
-        .modal-buttons { display: flex; gap: 12px; margin-top: 16px; }
-        .modal-buttons .btn-entrar {
-            flex: 1; padding: 12px;
-            background: linear-gradient(135deg, var(--azul-escuro), var(--azul-medio));
-            color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
-        }
-        .modal-buttons .btn-entrar:hover { opacity: 0.9; }
-        .modal-buttons .btn-cancelar {
-            flex: 1; padding: 12px; background: var(--cinza-200); color: var(--cinza-800);
-            border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
-        }
-        .modal-buttons .btn-cancelar:hover { background: var(--cinza-300); }
-        .modal-error { color: #e53e3e; font-size: 13px; margin-top: 12px; display: none; }
-        .modal-error.show { display: block; }
-        .modal-info { color: var(--cinza-600); font-size: 12px; margin-top: 12px; line-height: 1.4; }
     </style>
 </head>
 <body>
-<div class="app-content">
+
+<!-- LOGIN -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+        <div class="login-logo"><img src="logo-azevedo.png" alt="Azevedo Contabilidade"></div>
+        <h2>Sistemas Azevedo</h2>
+        <p class="login-subtitle">Azevedo Contabilidade &mdash; Acesso Restrito</p>
+        <input type="password" id="loginPassword" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="login-btn" onclick="doLogin()">Entrar</button>
+        <p class="login-error" id="loginError">Senha incorreta. Tente novamente.</p>
+    </div>
+</div>
+
+<script>
+function doLogin() {
+    const input = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+    const senhaCorreta = atob('YXpldmVkbzIwMjY=');
+    if (input === senhaCorreta) {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('appContent').classList.add('visible');
+        sessionStorage.setItem('logado', 'sim');
+        errorEl.classList.remove('show');
+    } else {
+        errorEl.classList.add('show');
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('loginPassword').focus();
+    }
+}
+function doLogout() {
+    sessionStorage.removeItem('logado');
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('appContent').classList.remove('visible');
+    document.getElementById('loginPassword').value = '';
+}
+if (sessionStorage.getItem('logado') === 'sim') {
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('appContent').classList.add('visible');
+    });
+}
+</script>
+
+<!-- PORTAL -->
+<div class="app-content" id="appContent">
     <div class="header">
         <div class="header-logo"><img src="logo-azevedo.png" alt="Azevedo Contabilidade"></div>
         <div class="header-text">
             <h1>Sistemas Azevedo Contabilidade</h1>
             <p>Plataforma interna de sistemas e ferramentas</p>
         </div>
+        <div class="header-right">
+            <button class="btn-logout" onclick="doLogout()">Sair</button>
+        </div>
     </div>
+
     <div class="container">
         <div class="welcome">
             <h2>Portal de Sistemas</h2>
             <p>Selecione o sistema que deseja acessar</p>
         </div>
+
         <div class="systems-grid">
+
             <a href="./conciliador-fornecedores-clientes.html" class="system-card card-conciliador">
                 <div class="card-icon">&#9878;</div>
                 <h3>Conciliador de Fornecedores e Clientes</h3>
                 <p>Conciliacao automatica de razao contabil com composicao de saldo inteligente. Suporta PDF e Excel.</p>
                 <span class="card-status status-online">Online</span>
             </a>
-            <a href="#" onclick="abrirPropostas(event)" class="system-card card-propostas">
+
+            <a href="https://propostas-azevedo.streamlit.app/" target="_blank" class="system-card card-propostas">
                 <div class="card-icon">&#9997;</div>
                 <h3>Propostas Comerciais</h3>
                 <p>Gerador de propostas comerciais personalizadas para captar novos clientes do escritorio.</p>
                 <span class="card-status status-online">Online</span>
             </a>
-            <a href="#" onclick="abrirNfse(event)" class="system-card card-nfse">
+
+            <a href="#" class="system-card card-nfse" onclick="document.getElementById('modalNfse').classList.remove('hidden'); return false;">
                 <div class="card-icon">&#128196;</div>
                 <h3>Emissor de NFS-e</h3>
                 <p>Emissao automatica de Notas Fiscais de Servico no portal Directa de Natal/RN. Sobe a planilha e emite em lote.</p>
                 <span class="card-status status-online">Online</span>
             </a>
+
             <div class="system-card card-em-breve">
                 <div class="card-icon">&#9881;</div>
                 <h3>Em breve...</h3>
                 <p>Novos sistemas serao adicionados aqui conforme forem desenvolvidos.</p>
                 <span class="card-status status-soon">Em desenvolvimento</span>
             </div>
-        </div>
-        <div class="footer">Azevedo Contabilidade &copy; 2026 &mdash; Todos os direitos reservados</div>
-    </div>
-</div>
 
-<!-- MODAL SENHA PROPOSTAS -->
-<div class="modal-overlay hidden" id="modalPropostas">
-    <div class="modal-box">
-        <h3>Propostas Comerciais</h3>
-        <p class="modal-subtitle">Acesso restrito &mdash; Digite a senha</p>
-        <input type="password" id="senhaPropostas" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')verificarSenhaPropostas()">
-        <div class="modal-buttons">
-            <button class="btn-cancelar" onclick="fecharModal('modalPropostas')">Cancelar</button>
-            <button class="btn-entrar" onclick="verificarSenhaPropostas()">Entrar</button>
         </div>
-        <p class="modal-error" id="modalError">Senha incorreta. Tente novamente.</p>
+
+        <div class="footer">
+            Azevedo Contabilidade &copy; 2026 &mdash; Todos os direitos reservados
+        </div>
     </div>
 </div>
 
@@ -237,35 +324,8 @@
 </div>
 
 <script>
-function abrirPropostas(e) {
-    e.preventDefault();
-    document.getElementById('modalPropostas').classList.remove('hidden');
-    document.getElementById('senhaPropostas').value = '';
-    document.getElementById('modalError').classList.remove('show');
-    setTimeout(function() { document.getElementById('senhaPropostas').focus(); }, 100);
-}
-function abrirNfse(e) {
-    e.preventDefault();
-    document.getElementById('modalNfse').classList.remove('hidden');
-    document.getElementById('nfseUsuario').value = '';
-    document.getElementById('nfseSenha').value = '';
-    document.getElementById('modalNfseError').classList.remove('show');
-    setTimeout(function() { document.getElementById('nfseUsuario').focus(); }, 100);
-}
 function fecharModal(id) {
     document.getElementById(id).classList.add('hidden');
-}
-function verificarSenhaPropostas() {
-    var input = document.getElementById('senhaPropostas').value;
-    var senhaCorreta = atob('YXpldmVkbzIwMjY=');
-    if (input === senhaCorreta) {
-        fecharModal('modalPropostas');
-        window.open('https://propostas-azevedo.streamlit.app/', '_blank');
-    } else {
-        document.getElementById('modalError').classList.add('show');
-        document.getElementById('senhaPropostas').value = '';
-        document.getElementById('senhaPropostas').focus();
-    }
 }
 function entrarNfse() {
     var usuario = document.getElementById('nfseUsuario').value.trim();
@@ -275,15 +335,13 @@ function entrarNfse() {
         return;
     }
     fecharModal('modalNfse');
-    var url = 'http://localhost:8502/?user=' + encodeURIComponent(usuario) + '&pass=' + encodeURIComponent(senha);
+    var url = 'https://nfse-azevedo.onrender.com/?user=' + encodeURIComponent(usuario) + '&pass=' + encodeURIComponent(senha);
     window.open(url, '_blank');
 }
-document.getElementById('modalPropostas').addEventListener('click', function(e) {
-    if (e.target === this) fecharModal('modalPropostas');
-});
 document.getElementById('modalNfse').addEventListener('click', function(e) {
     if (e.target === this) fecharModal('modalNfse');
 });
 </script>
+
 </body>
 </html>
