@@ -272,7 +272,7 @@ if (sessionStorage.getItem('logado') === 'sim') {
                 <span class="card-status status-online">Online</span>
             </a>
 
-            <a href="https://propostas-azevedo.streamlit.app/" target="_blank" class="system-card card-propostas">
+            <a href="#" class="system-card card-propostas" onclick="document.getElementById('modalPropostas').classList.remove('hidden'); setTimeout(function(){document.getElementById('propostasSenha').focus();}, 50); return false;">
                 <div class="card-icon">&#9997;</div>
                 <h3>Propostas Comerciais</h3>
                 <p>Gerador de propostas comerciais personalizadas para captar novos clientes do escritorio.</p>
@@ -322,6 +322,49 @@ if (sessionStorage.getItem('logado') === 'sim') {
         <p class="modal-info">Suas credenciais sao usadas apenas para acessar o portal Directa e nao sao armazenadas.</p>
     </div>
 </div>
+
+<!-- MODAL SENHA PROPOSTAS COMERCIAIS -->
+<div class="modal-overlay hidden" id="modalPropostas">
+    <div class="modal-box">
+        <h3>Propostas Comerciais</h3>
+        <p class="modal-subtitle">Acesso restrito &mdash; digite a senha do sistema</p>
+        <div class="input-group">
+            <label for="propostasSenha">Senha</label>
+            <input type="password" id="propostasSenha" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')entrarPropostas()">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-cancelar" onclick="fecharModalPropostas()">Cancelar</button>
+            <button class="btn-entrar" onclick="entrarPropostas()">Entrar</button>
+        </div>
+        <p class="modal-error" id="modalPropostasError">Senha incorreta. Tente novamente.</p>
+        <p class="modal-info">Este sistema possui acesso restrito e exige uma senha exclusiva.</p>
+    </div>
+</div>
+
+<script>
+function fecharModalPropostas() {
+    document.getElementById('modalPropostas').classList.add('hidden');
+    document.getElementById('propostasSenha').value = '';
+    document.getElementById('modalPropostasError').classList.remove('show');
+}
+function entrarPropostas() {
+    var input = document.getElementById('propostasSenha').value;
+    var senhaCorreta = atob('ZXN0b3Vyb2RldmVuZGFzMjAyNg==');
+    var errorEl = document.getElementById('modalPropostasError');
+    if (input === senhaCorreta) {
+        errorEl.classList.remove('show');
+        fecharModalPropostas();
+        window.open('https://propostas-azevedo.streamlit.app/', '_blank');
+    } else {
+        errorEl.classList.add('show');
+        document.getElementById('propostasSenha').value = '';
+        document.getElementById('propostasSenha').focus();
+    }
+}
+document.getElementById('modalPropostas').addEventListener('click', function(e) {
+    if (e.target === this) fecharModalPropostas();
+});
+</script>
 
 <script>
 function fecharModal(id) {
