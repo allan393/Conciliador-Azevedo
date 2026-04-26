@@ -142,6 +142,7 @@
         .card-conciliador .card-icon { background: #ebf4ff; color: #2b6cb0; }
         .card-propostas .card-icon { background: #f0fff4; color: #38a169; }
         .card-nfse .card-icon { background: #fef3c7; color: #d97706; }
+        .card-bloqueio .card-icon { background: #fff5f5; color: #c53030; }
         .card-em-breve .card-icon { background: var(--cinza-200); color: var(--cinza-400); }
         .card-em-breve { opacity: 0.6; cursor: default; }
         .card-em-breve:hover { transform: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-color: transparent; }
@@ -283,6 +284,13 @@ if (sessionStorage.getItem('logado') === 'sim') {
                 <div class="card-icon">&#128196;</div>
                 <h3>Emissor de NFS-e</h3>
                 <p>Emissao automatica de Notas Fiscais de Servico no portal Directa de Natal/RN. Sobe a planilha e emite em lote.</p>
+                <span class="card-status status-online">Online</span>
+            </a>
+
+            <a href="https://bloqueio-azevedo.onrender.com" target="_blank" class="system-card card-bloqueio">
+                <div class="card-icon">&#128274;</div>
+                <h3>Bloqueio de Clientes</h3>
+                <p>Marque clientes inadimplentes para que o time de atendimento veja o aviso direto na lista do Digisac.</p>
                 <span class="card-status status-online">Online</span>
             </a>
 
